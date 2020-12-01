@@ -2,21 +2,29 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.debezium</groupId>
-        <artifactId>debezium-incubator-parent</artifactId>
+        <artifactId>debezium-parent</artifactId>
         <version>1.4.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-db2</artifactId>
     <name>Debezium Connector for IBM DB2 Server</name>
     <packaging>jar</packaging>
 
+    <scm>
+        <connection>scm:git:git@github.com:debezium/debezium-connector-db2.git</connection>
+        <developerConnection>scm:git:git@github.com:debezium/debezium-connector-db2.git</developerConnection>
+        <url>https://github.com/debezium/debezium-connector-db2</url>
+      <tag>HEAD</tag>
+    </scm>
+
     <properties>
+        <version.db2.driver>11.5.0.0</version.db2.driver>
+
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.
-      -->
+        -->
         <db2.port>50000</db2.port>
         <db2.user>db2inst1</db2.user>
         <db2.password>admin</db2.password>

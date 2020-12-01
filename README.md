@@ -1,6 +1,31 @@
-# Ingesting DB2 change events
+[![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium-connector-db2/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22)
+[![Build Status](https://travis-ci.com/debezium/debezium-incubator.svg?branch=master)](https://travis-ci.com/debezium/debezium-incubator/)
+[![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://gitter.im/debezium/user)
+[![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://gitter.im/debezium/dev)
+[![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
+[![Stack Overflow](http://img.shields.io/:stack%20overflow-debezium-brightgreen.svg)](http://stackoverflow.com/questions/tagged/debezium)
 
-This module defines the connector that ingests change events from DB2 databases. Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/connectors/db2.html). See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
+Copyright Debezium Authors.
+Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+# Debezium Connector for Db2
+
+Debezium is an open source project that provides a low latency data streaming platform for change data capture (CDC).
+
+This repository contains incubating connector for Db2 which is in an **early stage of its development**.
+You are encouraged to explore this connector and test it, but it is not recommended yet for production usage.
+E.g. the format of emitted messages may change, specific features may not be implemented yet etc.
+
+Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/connectors/db2.html). See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
+
+## Building and testing the Db2 connector
+
+Running `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with DB2 and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
+
+An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a DB2 database server running in a custom Docker container based upon the [ibmcom/db2](https://hub.docker.com/r/ibmcom/db2) Docker image maintained by the DB2 team. The build will automatically start the DB2 container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they succeed or fail). All databases used in the integration tests are defined and populated using `*.sql` files and `*.sh` scripts in the `src/test/docker/db2-cdc-docker` directory, which are copied into the Docker image and run by DB2 upon startup. Multiple test methods within a single integration test class can reuse the same database, but generally each integration test class should use its own dedicated database(s).
+
+You should always default to using `mvn install`, especially prior to committing changes to Git. However, there are a few situations where you may want to run a different Maven command. For details on running individual tests or inspecting the Db2 database for debugging continue reading below.
 
 ## Using the DB2 connector with Kafka Connect
 
@@ -11,8 +36,6 @@ Kafka Connect can also be run standalone as a single process, although doing so 
 ## Embedding the DB2 connector
 
 The DB2 connector can also be used as a library without Kafka or Kafka Connect, enabling applications and services to directly connect to a DB2 database and obtain the ordered change events. This approach requires the application to record the progress of the connector so that upon restart the connect can continue where it left off. Therefore, this may be a useful approach for less critical use cases. For production use cases, we highly recommend using this connector with Kafka and Kafka Connect.
-
-
 
 ## Testing
 
