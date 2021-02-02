@@ -21,7 +21,8 @@ Documentation on how to use the connector and the internal workings can be found
 
 ## Building and testing the Db2 connector
 
-Building Db2 connector first requires [Debezium](https://github.com/debezium/debezium) to be built locally using `mvn clean install`.
+```suggestion
+Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
 
 Then after, run Db2 using `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with DB2 and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
 
