@@ -9,7 +9,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-db2</artifactId>
-    <version>1.5.0-SNAPSHOT</version>
+    <version>1.5.0.Alpha1</version>
     <name>Debezium Connector for IBM DB2 Server</name>
     <packaging>jar</packaging>
 
@@ -17,7 +17,7 @@
         <connection>scm:git:git@github.com:debezium/debezium-connector-db2.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium-connector-db2.git</developerConnection>
         <url>https://github.com/debezium/debezium-connector-db2</url>
-      <tag>HEAD</tag>
+      <tag>v1.5.0.Alpha1</tag>
     </scm>
 
     <properties>
