@@ -382,6 +382,12 @@ public class Db2Connection extends JdbcConnection {
         return realDatabaseName;
     }
 
+    @Override
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        // ignore indices with no name;
+        return indexName != null;
+    }
+
     private String retrieveRealDatabaseName() {
         try {
             return queryAndMap(
