@@ -1,46 +1,37 @@
-#
-# Copyright Debezium Authors
-#
-# Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
-#
-name: Maven CI
-
+name: Java Quality Outreach
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-        - '*.md'
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-        - '*.md'
+  schedule:
+    - cron: 0 22 * * *
 
 jobs:
-  build:
+  db2:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        feature: [ 15, 16 ]
+    name: Db2 - Java ${{ matrix.feature }}
     steps:
       - name: Checkout core repository
         uses: actions/checkout@v2
         with:
+          submodules: recursive
           repository: debezium/debezium
           path: core
       - name: Checkout Db2 connector
         uses: actions/checkout@v2
         with:
+          submodules: recursive
           path: db2
-      - name: Set up JDK
-        uses: actions/setup-java@v1
+      - name: Setup OpenJDK
+        uses: sormuras/download-jdk@v1
+        id: jdk
         with:
-          java-version: 8
-      - name: Cache Maven packages
-        uses: actions/cache@v1
+          feature: ${{ matrix.feature }}
+      - name: Setup Java
+        uses: actions/setup-java@v1.4.3
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          java-version: ${{ steps.jdk.outputs.version }}
+          jdkFile: ${{ steps.jdk.outputs.file }}
       - name: Maven build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Maven build Db2
