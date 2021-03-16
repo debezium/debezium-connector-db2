@@ -8,7 +8,6 @@ package io.debezium.connector.db2;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -21,13 +20,11 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -289,29 +286,13 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-    private final ColumnNameFilter columnFilter;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false);
+        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
-        this.columnFilter = getColumnNameFilter(
-                config.getFallbackStringProperty(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
-    }
-
-    private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
     }
 
     public String getDatabaseName() {
@@ -324,10 +305,6 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
-    }
-
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     @Override
