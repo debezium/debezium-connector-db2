@@ -24,9 +24,6 @@
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
 
-        <!-- Dependencies -->
-        <version.db2.driver>11.5.0.0</version.db2.driver>
-
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
@@ -126,7 +123,6 @@
         <dependency>
             <groupId>com.ibm.db2</groupId>
             <artifactId>jcc</artifactId>
-            <version>${version.db2.driver}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
