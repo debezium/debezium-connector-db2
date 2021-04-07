@@ -398,4 +398,14 @@ public class Db2Connection extends JdbcConnection {
             throw new RuntimeException("Couldn't obtain database name", e);
         }
     }
+
+    /**
+     * Returns a JDBC connection string for the current configuration.
+     *
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
+     */
+    public String connectionString() {
+        return connectionString(URL_PATTERN);
+    }
+
 }
