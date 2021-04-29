@@ -116,3 +116,12 @@ database.dbname=TESTDB
 database.cdcschema=ASNCDC
 database.history.kafka.bootstrap.servers=localhost:9092
 database.history.kafka.topic=CDCTESTDB
+
+### Building just the artifacts, without running tests, CheckStyle, etc.
+
+You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
+
+    $ mvn clean verify -Dquick
+
+This provides the fastes way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
+This comes in handy for producing connector JARs and/or archives as quickly as possible, e.g. for manual testing in Kafka Connect.
