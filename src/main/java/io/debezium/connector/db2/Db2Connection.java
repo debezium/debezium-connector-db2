@@ -408,4 +408,9 @@ public class Db2Connection extends JdbcConnection {
         return connectionString(URL_PATTERN);
     }
 
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()) + "."
+                + Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table());
+    }
 }
