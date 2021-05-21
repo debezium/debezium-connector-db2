@@ -54,7 +54,7 @@ import io.debezium.util.Metronome;
  *
  * @author Jiri Pechanec, Peter Urbanetz
  */
-public class Db2StreamingChangeEventSource implements StreamingChangeEventSource {
+public class Db2StreamingChangeEventSource implements StreamingChangeEventSource<Db2OffsetContext> {
 
     private static final int COL_COMMIT_LSN = 2;
     private static final int COL_ROW_LSN = 3;
@@ -80,11 +80,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final Db2DatabaseSchema schema;
-    private final Db2OffsetContext offsetContext;
     private final Duration pollInterval;
     private final Db2ConnectorConfig connectorConfig;
 
-    public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2OffsetContext offsetContext, Db2Connection dataConnection,
+    public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
                                          Db2Connection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                          Db2DatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
@@ -94,16 +93,15 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
-        this.offsetContext = offsetContext;
         this.pollInterval = connectorConfig.getPollInterval();
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, Db2OffsetContext offsetContext) throws InterruptedException {
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {
-            final AtomicReference<Db2ChangeTable[]> tablesSlot = new AtomicReference<Db2ChangeTable[]>(getCdcTablesToQuery());
+            final AtomicReference<Db2ChangeTable[]> tablesSlot = new AtomicReference<>(getCdcTablesToQuery(offsetContext));
 
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
@@ -138,10 +136,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 shouldIncreaseFromLsn = true;
 
                 while (!schemaChangeCheckpoints.isEmpty()) {
-                    migrateTable(schemaChangeCheckpoints);
+                    migrateTable(offsetContext, schemaChangeCheckpoints);
                 }
                 if (!dataConnection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
-                    final Db2ChangeTable[] tables = getCdcTablesToQuery();
+                    final Db2ChangeTable[] tables = getCdcTablesToQuery(offsetContext);
                     tablesSlot.set(tables);
                     for (Db2ChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn)) {
@@ -209,7 +207,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
                                 if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
-                                    migrateTable(schemaChangeCheckpoints);
+                                    migrateTable(offsetContext, schemaChangeCheckpoints);
                                 }
                             }
                             final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
@@ -259,7 +257,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
-    private void migrateTable(final Queue<Db2ChangeTable> schemaChangeCheckpoints)
+    private void migrateTable(Db2OffsetContext offsetContext, final Queue<Db2ChangeTable> schemaChangeCheckpoints)
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
@@ -279,7 +277,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         throw exception;
     }
 
-    private Db2ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
+    private Db2ChangeTable[] getCdcTablesToQuery(Db2OffsetContext offsetContext) throws SQLException, InterruptedException {
         final Set<Db2ChangeTable> cdcEnabledTables = dataConnection.listOfChangeTables();
 
         if (cdcEnabledTables.isEmpty()) {
