@@ -20,8 +20,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.junit.Assert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2Connection;
@@ -36,8 +34,6 @@ import io.debezium.util.Testing;
  * @author Horia Chiorean (hchiorea@redhat.com), Luis Garcés-Erice
  */
 public class TestHelper {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
