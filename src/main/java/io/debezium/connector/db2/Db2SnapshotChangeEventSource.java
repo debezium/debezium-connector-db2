@@ -177,7 +177,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void complete(SnapshotContext snapshotContext) {
+    protected void complete(SnapshotContext<Db2OffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart);
         }

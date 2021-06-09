@@ -39,7 +39,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class Db2ConnectorTask extends BaseSourceTask {
+public class Db2ConnectorTask extends BaseSourceTask<Db2OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2ConnectorTask.class);
     private static final String CONTEXT_NAME = "db2-server-connector-task";
@@ -57,7 +57,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<Db2OffsetContext> start(Configuration config) {
         final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = Db2TopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -82,7 +82,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
         this.schema = new Db2DatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, dataConnection);
         this.schema.initializeStorage();
 
-        final OffsetContext previousOffset = getPreviousOffset(new Db2OffsetContext.Loader(connectorConfig));
+        final Db2OffsetContext previousOffset = getPreviousOffset(new Db2OffsetContext.Loader(connectorConfig));
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }
@@ -113,7 +113,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 metadataProvider,
                 schemaNameAdjuster);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator<Db2OffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffset,
                 errorHandler,
                 Db2Connector.class,
@@ -132,7 +132,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
      * Loads the connector's persistent offset (if present) via the given loader.
      */
     @Override
-    protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
+    protected Db2OffsetContext getPreviousOffset(OffsetContext.Loader<Db2OffsetContext> loader) {
         Map<String, ?> partition = loader.getPartition();
 
         Map<String, Object> previousOffset = context.offsetStorageReader()
@@ -140,7 +140,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 .get(partition);
 
         if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
+            Db2OffsetContext offsetContext = loader.load(previousOffset);
             LOGGER.info("Found previous offset {}", offsetContext);
             return offsetContext;
         }
