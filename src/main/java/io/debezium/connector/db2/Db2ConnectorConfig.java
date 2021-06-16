@@ -115,7 +115,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     /**
      * The set of predefined snapshot isolation mode options.
-     * 
+     *
      * https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052429.html
      */
     public static enum SnapshotIsolationMode implements EnumeratedValue {
