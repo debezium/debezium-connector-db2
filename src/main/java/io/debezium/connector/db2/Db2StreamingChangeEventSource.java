@@ -54,7 +54,7 @@ import io.debezium.util.Metronome;
  *
  * @author Jiri Pechanec, Peter Urbanetz
  */
-public class Db2StreamingChangeEventSource implements StreamingChangeEventSource<Db2OffsetContext> {
+public class Db2StreamingChangeEventSource implements StreamingChangeEventSource<Db2Partition, Db2OffsetContext> {
 
     private static final int COL_COMMIT_LSN = 2;
     private static final int COL_ROW_LSN = 3;
@@ -97,7 +97,8 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, Db2OffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, Db2Partition partition, Db2OffsetContext offsetContext)
+            throws InterruptedException {
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {

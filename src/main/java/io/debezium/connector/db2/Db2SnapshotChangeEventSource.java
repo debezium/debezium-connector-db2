@@ -27,7 +27,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
-public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2OffsetContext> {
+public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2Partition, Db2OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2SnapshotChangeEventSource.class);
 
