@@ -20,7 +20,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2OffsetContext> {
+public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2Partition, Db2OffsetContext> {
 
     private final Db2ConnectorConfig configuration;
     private final Db2Connection dataConnection;
@@ -42,12 +42,12 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
     }
 
     @Override
-    public SnapshotChangeEventSource<Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<Db2Partition, Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new Db2SnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
-    public StreamingChangeEventSource<Db2OffsetContext> getStreamingChangeEventSource() {
+    public StreamingChangeEventSource<Db2Partition, Db2OffsetContext> getStreamingChangeEventSource() {
         return new Db2StreamingChangeEventSource(
                 configuration,
                 dataConnection,
