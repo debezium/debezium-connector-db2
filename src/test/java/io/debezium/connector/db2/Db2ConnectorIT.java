@@ -29,6 +29,8 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
+import io.debezium.converters.CloudEventsConverterTest;
+import io.debezium.converters.CloudEventsMaker;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
@@ -930,6 +932,44 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         assertThat(before.schema().field("F1").schema().parameters()).includes(
                 entry(TYPE_NAME_PARAMETER_KEY, "REAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "24"));
+    }
+
+    @Test
+    @FixFor("DBZ-3668")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.tablea")
+                .build();
+
+        connection.execute("INSERT INTO tablea (id,cola) values (1001, 'DBZ3668')");
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        List<SourceRecord> tablea = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        assertThat(tablea).hasSize(1);
+
+        for (SourceRecord record : tablea) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "db2", "testdb", false);
+        }
+
+        connection.execute("INSERT INTO tablea (id,cola) values (1002, 'DBZ3668')");
+        records = consumeRecordsByTopic(1);
+
+        tablea = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        assertThat(tablea).hasSize(1);
+
+        for (SourceRecord record : tablea) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, false, jsonNode -> {
+                assertThat(jsonNode.get(CloudEventsMaker.FieldName.ID).asText()).contains("commit_lsn:");
+            });
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "db2", "testdb", false);
+        }
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
