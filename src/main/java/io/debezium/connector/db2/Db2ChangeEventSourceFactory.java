@@ -66,6 +66,7 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
         final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
                 configuration,
                 dataConnection,
+                dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
