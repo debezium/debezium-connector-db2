@@ -74,10 +74,10 @@ public class Db2Connector extends RelationalBaseSourceConnector {
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         // Try to connect to the database ...
         Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
-        try (Db2Connection connection = new Db2Connection(connectorConfig.getConfig())) {
+        try (Db2Connection connection = new Db2Connection(connectorConfig.getJdbcConfig())) {
             try {
                 connection.connect();
-                connection.execute("SELECT version()");
+                connection.execute("SELECT 1 FROM sysibm.sysdummy1;");
                 LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connection.username());
             }
             catch (SQLException e) {
