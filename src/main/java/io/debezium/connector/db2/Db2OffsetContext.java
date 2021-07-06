@@ -162,7 +162,7 @@ public class Db2OffsetContext implements OffsetContext {
             }
 
             return new Db2OffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
-                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, false, TableId.class));
+                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, false));
         }
     }
 
