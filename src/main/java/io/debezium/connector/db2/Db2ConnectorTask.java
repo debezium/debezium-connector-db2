@@ -7,7 +7,6 @@ package io.debezium.connector.db2;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -24,6 +23,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -80,12 +80,13 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         this.schema = new Db2DatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, dataConnection);
         this.schema.initializeStorage();
 
-        Map<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),
+        Offsets<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),
                 new Db2OffsetContext.Loader(connectorConfig));
-        final Db2OffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+        final Db2Partition partition = previousOffsets.getTheOnlyPartition();
+        final Db2OffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         if (previousOffset != null) {
-            schema.recover(previousOffset);
+            schema.recover(partition, previousOffset);
         }
 
         taskContext = new Db2TaskContext(connectorConfig, schema);
