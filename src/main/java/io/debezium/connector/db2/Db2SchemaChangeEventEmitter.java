@@ -17,12 +17,15 @@ import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
  */
 public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
 
+    private final Db2Partition partition;
     private final Db2OffsetContext offsetContext;
     private final Db2ChangeTable changeTable;
     private final Table tableSchema;
     private final SchemaChangeEventType eventType;
 
-    public Db2SchemaChangeEventEmitter(Db2OffsetContext offsetContext, Db2ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
+    public Db2SchemaChangeEventEmitter(Db2Partition partition, Db2OffsetContext offsetContext,
+                                       Db2ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
@@ -32,7 +35,7 @@ public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
     @Override
     public void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException {
         final SchemaChangeEvent event = new SchemaChangeEvent(
-                offsetContext.getPartition(),
+                partition.getSourcePartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 changeTable.getSourceTableId().catalog(),

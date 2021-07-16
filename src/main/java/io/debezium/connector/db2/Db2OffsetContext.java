@@ -6,7 +6,6 @@
 package io.debezium.connector.db2;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -29,7 +28,6 @@ public class Db2OffsetContext implements OffsetContext {
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
-    private final Map<String, String> partition;
     private boolean snapshotCompleted;
 
     private final TransactionContext transactionContext;
@@ -42,7 +40,6 @@ public class Db2OffsetContext implements OffsetContext {
 
     public Db2OffsetContext(Db2ConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
                             TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
@@ -63,11 +60,6 @@ public class Db2OffsetContext implements OffsetContext {
 
     public Db2OffsetContext(Db2ConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
         this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>(false));
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
     }
 
     @Override
@@ -172,7 +164,6 @@ public class Db2OffsetContext implements OffsetContext {
         return "Db2OffsetContext [" +
                 "sourceInfoSchema=" + sourceInfoSchema +
                 ", sourceInfo=" + sourceInfo +
-                ", partition=" + partition +
                 ", snapshotCompleted=" + snapshotCompleted +
                 ", eventSerialNo=" + eventSerialNo +
                 "]";

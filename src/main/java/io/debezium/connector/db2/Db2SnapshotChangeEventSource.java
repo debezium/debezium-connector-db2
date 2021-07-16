@@ -67,22 +67,22 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SnapshotContext<Db2OffsetContext> prepare(ChangeEventSourceContext context) throws Exception {
-        return new Db2SnapshotContext(jdbcConnection.getRealDatabaseName());
+    protected SnapshotContext<Db2Partition, Db2OffsetContext> prepare(Db2Partition partition) throws Exception {
+        return new Db2SnapshotContext(partition, jdbcConnection.getRealDatabaseName());
     }
 
     @Override
-    protected void connectionCreated(RelationalSnapshotContext<Db2OffsetContext> snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) throws Exception {
         ((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<Db2OffsetContext> ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> ctx) throws Exception {
         return jdbcConnection.readTableNames(null, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<Db2OffsetContext> snapshotContext)
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_UNCOMMITTED) {
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
@@ -117,7 +117,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<Db2OffsetContext> snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
         // read_uncommitted mode; read_committed mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
@@ -127,7 +127,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext<Db2OffsetContext> ctx, Db2OffsetContext previousOffset) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> ctx, Db2OffsetContext previousOffset) throws Exception {
         ctx.offset = new Db2OffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
@@ -136,7 +136,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<Db2OffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext,
+                                      RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
                                       Db2OffsetContext previousOffset)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -164,9 +165,11 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<Db2OffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                snapshotContext.partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -177,7 +180,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void complete(SnapshotContext<Db2OffsetContext> snapshotContext) {
+    protected void complete(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart);
         }
@@ -193,7 +196,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<Db2OffsetContext> snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM %s.%s", Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
                 Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table())));
     }
@@ -201,13 +204,13 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class Db2SnapshotContext extends RelationalSnapshotContext<Db2OffsetContext> {
+    private static class Db2SnapshotContext extends RelationalSnapshotContext<Db2Partition, Db2OffsetContext> {
 
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public Db2SnapshotContext(String catalogName) throws SQLException {
-            super(catalogName);
+        public Db2SnapshotContext(Db2Partition partition, String catalogName) throws SQLException {
+            super(partition, catalogName);
         }
     }
 
