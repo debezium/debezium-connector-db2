@@ -86,6 +86,8 @@ public class Db2Connection extends JdbcConnection {
 
     private static final int CHANGE_TABLE_DATA_COLUMN_OFFSET = 4;
 
+    private static final String QUOTED_CHARACTER = "\"";
+
     private static final String URL_PATTERN = "jdbc:db2://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
 
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
@@ -110,7 +112,7 @@ public class Db2Connection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public Db2Connection(Configuration config) {
-        super(config, FACTORY);
+        super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
     }
