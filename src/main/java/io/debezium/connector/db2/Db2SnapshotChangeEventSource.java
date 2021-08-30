@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -196,8 +197,10 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext, TableId tableId) {
-        return Optional.of(String.format("SELECT * FROM %s.%s", Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext, TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
+        return Optional.of(String.format("SELECT %s FROM %s.%s", snapshotSelectColumns, Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
                 Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table())));
     }
 
