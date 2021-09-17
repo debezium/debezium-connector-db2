@@ -316,10 +316,11 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !(t.table().toLowerCase().startsWith("ibmsnap_") ||
-                    t.schema().toUpperCase().startsWith("ASNCDC") ||
-                    t.schema().toUpperCase().startsWith("SYSTOOLS") ||
-                    t.table().toLowerCase().startsWith("ibmqrep_"));
+            return t.schema() != null &&
+                    !(t.table().toLowerCase().startsWith("ibmsnap_") ||
+                            t.schema().toUpperCase().startsWith("ASNCDC") ||
+                            t.schema().toUpperCase().startsWith("SYSTOOLS") ||
+                            t.table().toLowerCase().startsWith("ibmqrep_"));
 
         }
     }
