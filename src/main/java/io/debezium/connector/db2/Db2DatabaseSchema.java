@@ -35,7 +35,8 @@ public class Db2DatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames()),
+                        connectorConfig.getSanitizeFieldNames(),
+                        false),
                 false, connectorConfig.getKeyMapper());
     }
 
