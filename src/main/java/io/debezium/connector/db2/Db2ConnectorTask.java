@@ -105,7 +105,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
         final Db2EventMetadataProvider metadataProvider = new Db2EventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<Db2Partition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -121,7 +121,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 Db2Connector.class,
                 connectorConfig,
                 new Db2ChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                new DefaultChangeEventSourceMetricsFactory(),
+                new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
                 schema);
 

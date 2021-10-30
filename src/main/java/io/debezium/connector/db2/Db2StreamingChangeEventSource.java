@@ -76,7 +76,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
      */
     private final Db2Connection metadataConnection;
 
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<Db2Partition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final Db2DatabaseSchema schema;
@@ -84,8 +84,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Db2ConnectorConfig connectorConfig;
 
     public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
-                                         Db2Connection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                         Db2DatabaseSchema schema) {
+                                         Db2Connection metadataConnection,
+                                         EventDispatcher<Db2Partition, TableId> dispatcher, ErrorHandler errorHandler,
+                                         Clock clock, Db2DatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -234,6 +235,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
 
                             dispatcher
                                     .dispatchDataChangeEvent(
+                                            partition,
                                             tableId,
                                             new Db2ChangeRecordEmitter(
                                                     partition,
