@@ -36,14 +36,14 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     private final Db2Connection jdbcConnection;
 
     public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection jdbcConnection, Db2DatabaseSchema schema,
-                                        EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                        EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(Db2OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 

@@ -266,7 +266,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final SnapshotIsolationMode snapshotIsolationMode;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA);
+        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
