@@ -412,7 +412,11 @@ public class Db2Connection extends JdbcConnection {
 
     @Override
     public String quotedTableIdString(TableId tableId) {
-        return Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()) + "."
-                + Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table());
+        StringBuilder quoted = new StringBuilder();
+        if (tableId.schema() != null && !tableId.schema().isEmpty()) {
+            quoted.append(Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema())).append(".");
+        }
+        quoted.append(Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
+        return quoted.toString();
     }
 }
