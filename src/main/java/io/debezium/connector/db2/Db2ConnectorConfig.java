@@ -21,6 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -237,14 +238,18 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     DATABASE_NAME)
             .connector(
                     SNAPSHOT_MODE,
-                    BINARY_HANDLING_MODE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_BLACKLIST,
-                    SCHEMA_EXCLUDE_LIST)
+                    SCHEMA_EXCLUDE_LIST,
+                    // additional fields
+                    BINARY_HANDLING_MODE,
+                    INCLUDE_SCHEMA_COMMENTS,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    SNAPSHOT_MAX_THREADS,
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     protected static ConfigDef configDef() {
