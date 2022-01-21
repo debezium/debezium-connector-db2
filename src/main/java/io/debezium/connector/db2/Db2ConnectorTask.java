@@ -101,7 +101,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(Db2Connector.class, connectorConfig.getLogicalName(), queue);
+        errorHandler = new ErrorHandler(Db2Connector.class, connectorConfig, queue);
 
         final Db2EventMetadataProvider metadataProvider = new Db2EventMetadataProvider();
 
