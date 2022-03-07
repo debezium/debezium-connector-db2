@@ -25,7 +25,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -66,11 +65,8 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 .withDefault("database.fetchSize", 10_000)
                 .build();
 
-        final Configuration jdbcConfig = config.filter(
-                x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(Db2ConnectorConfig.DATABASE_HISTORY.name())))
-                .subset("database.", true);
-        dataConnection = new Db2Connection(jdbcConfig);
-        metadataConnection = new Db2Connection(jdbcConfig);
+        dataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
+        metadataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
         try {
             dataConnection.setAutoCommit(false);
         }

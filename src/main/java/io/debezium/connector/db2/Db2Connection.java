@@ -100,10 +100,6 @@ public class Db2Connection extends JdbcConnection {
      */
     private final String realDatabaseName;
 
-    private static interface ResultSetExtractor<T> {
-        T apply(ResultSet rs) throws SQLException;
-    }
-
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
 
     /**
@@ -111,7 +107,7 @@ public class Db2Connection extends JdbcConnection {
      *
      * @param config {@link Configuration} instance, may not be null.
      */
-    public Db2Connection(Configuration config) {
+    public Db2Connection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
