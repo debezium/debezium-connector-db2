@@ -57,7 +57,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     public ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> start(Configuration config) {
         final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = Db2TopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
         // By default do not load whole result sets into memory
         config = config.edit()
