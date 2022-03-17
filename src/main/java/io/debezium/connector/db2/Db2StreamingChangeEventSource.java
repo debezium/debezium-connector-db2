@@ -266,7 +266,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
-        dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(),
+        dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
                 new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable,
                         metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
     }
@@ -327,6 +327,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
+                        partition,
                         currentTable.getSourceTableId(),
                         new Db2SchemaChangeEventEmitter(
                                 partition,
