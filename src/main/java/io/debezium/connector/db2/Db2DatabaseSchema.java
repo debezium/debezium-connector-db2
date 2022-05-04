@@ -16,7 +16,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -28,8 +28,9 @@ public class Db2DatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2DatabaseSchema.class);
 
-    public Db2DatabaseSchema(Db2ConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, Db2Connection connection) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+    public Db2DatabaseSchema(Db2ConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicNamingStrategy<TableId> topicNamingStrategy,
+                             Db2Connection connection) {
+        super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         new Db2ValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode()),
                         schemaNameAdjuster,
