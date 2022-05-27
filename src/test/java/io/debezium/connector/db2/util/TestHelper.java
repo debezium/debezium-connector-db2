@@ -20,6 +20,8 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2Connection;
@@ -63,6 +65,8 @@ public class TestHelper {
     private static final String ENABLE_TABLE_CDC = "CALL ASNCDC.ADDTABLE('@', '#' )";
     private static final String DISABLE_TABLE_CDC = "CALL ASNCDC.REMOVETABLE('@', '#' )";
     private static final String RESTART_ASN_CDC = "VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc')";
+
+    private static Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static JdbcConfiguration adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
@@ -125,6 +129,7 @@ public class TestHelper {
             while (rs.next()) {
                 Clob clob = rs.getClob(1);
                 String test = clob.getSubString(1, (int) clob.length());
+                LOGGER.debug("Checking DB CDC status, got '{}'", test);
                 if (test.contains("is doing work")) {
                     isNotrunning = false;
                 }
