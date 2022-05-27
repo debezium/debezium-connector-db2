@@ -21,4 +21,10 @@
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+    <!-- TODO: remove once root cuase of DBZ-5149 is found -->
+    <logger
+        name="io.debezium.connector.db2.util.TestHelper"
+        level="debug" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 </configuration>
