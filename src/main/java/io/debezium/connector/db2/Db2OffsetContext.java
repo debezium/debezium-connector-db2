@@ -170,8 +170,8 @@ public class Db2OffsetContext implements OffsetContext {
     }
 
     @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
+    public void markSnapshotRecord(SnapshotRecord record) {
+        sourceInfo.setSnapshot(record);
     }
 
     @Override
