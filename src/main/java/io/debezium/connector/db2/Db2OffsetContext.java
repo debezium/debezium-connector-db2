@@ -20,14 +20,13 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class Db2OffsetContext extends CommonOffsetContext {
+public class Db2OffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     private static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
 
     private final Schema sourceInfoSchema;
-    private final SourceInfo sourceInfo;
     private boolean snapshotCompleted;
 
     private final TransactionContext transactionContext;
@@ -40,7 +39,7 @@ public class Db2OffsetContext extends CommonOffsetContext {
 
     public Db2OffsetContext(Db2ConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
                             TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        sourceInfo = new SourceInfo(connectorConfig);
+        super(new SourceInfo(connectorConfig));
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
@@ -60,11 +59,6 @@ public class Db2OffsetContext extends CommonOffsetContext {
 
     public Db2OffsetContext(Db2ConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
         this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>(false));
-    }
-
-    @Override
-    public SourceInfo getSourceInfoObject() {
-        return sourceInfo;
     }
 
     @Override
