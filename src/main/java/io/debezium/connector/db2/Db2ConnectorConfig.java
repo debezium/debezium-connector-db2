@@ -241,9 +241,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     SCHEMA_NAME_ADJUSTMENT_MODE)
             .excluding(
-                    SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,
                     // additional fields
                     BINARY_HANDLING_MODE,
