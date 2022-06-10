@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -325,6 +326,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             }
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
+                // this prevents potential NPE if there is no TableId information in the source info
+                offsetContext.event(currentTable.getSourceTableId(), Instant.now());
+
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
                         partition,
