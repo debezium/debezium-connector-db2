@@ -33,9 +33,6 @@ public class Db2SourceInfoStructMaker extends AbstractSourceInfoStructMaker<Sour
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        if (sourceInfo.getTableId() == null) {
-            System.out.println("wait");
-        }
         final Struct ret = super.commonStruct(sourceInfo)
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
