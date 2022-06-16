@@ -168,7 +168,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
-        return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.capturedTables, table);
+        return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
     @Override
