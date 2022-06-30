@@ -68,6 +68,11 @@
                 <artifactId>debezium-embedded</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-kafka</artifactId>
+                <version>${version.debezium}</version>
+            </dependency>
 
             <!-- Building -->
             <dependency>
@@ -117,6 +122,14 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-file</artifactId>
         </dependency>
         <!-- Db2 JDBC driver -->
         <!-- https://mvnrepository.com/artifact/com.ibm.db2/jcc -->
