@@ -46,19 +46,26 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, true),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         */
+        INITIAL_ONLY("initial_only", true, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false);
+        SCHEMA_ONLY("schema_only", false, true);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldStream;
 
-        private SnapshotMode(String value, boolean includeData) {
+        private SnapshotMode(String value, boolean includeData, boolean shouldStream) {
             this.value = value;
             this.includeData = includeData;
+            this.shouldStream = shouldStream;
         }
 
         @Override
@@ -72,6 +79,13 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
          */
         public boolean includeData() {
             return includeData;
+        }
+
+        /**
+         * Whether the snapshot mode is followed by streaming.
+         */
+        public boolean shouldStream() {
+            return shouldStream;
         }
 
         /**

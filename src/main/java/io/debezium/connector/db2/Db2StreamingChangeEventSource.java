@@ -101,6 +101,11 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     @Override
     public void execute(ChangeEventSourceContext context, Db2Partition partition, Db2OffsetContext offsetContext)
             throws InterruptedException {
+        if (!connectorConfig.getSnapshotMode().shouldStream()) {
+            LOGGER.info("Streaming is not enabled in current configuration");
+            return;
+        }
+
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {
