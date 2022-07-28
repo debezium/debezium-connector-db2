@@ -12,8 +12,9 @@ import io.debezium.schema.TopicSelector;
  * The topic naming strategy based on connector configuration and table name
  *
  * @author Jiri Pechanec
- *
+ * @deprecated Use {@link io.debezium.schema.SchemaTopicNamingStrategy} instead.
  */
+@Deprecated
 public class Db2TopicSelector {
 
     public static TopicSelector<TableId> defaultSelector(Db2ConnectorConfig connectorConfig) {
