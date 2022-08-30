@@ -145,10 +145,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "DB2INST1.B,DB2INST1.DEBEZIUM_SIGNAL";
+            tableIncludeList = "DB2INST1.B";
         }
         else {
-            tableIncludeList = "DB2INST1.A,DB2INST1.B,DB2INST1.DEBEZIUM_SIGNAL";
+            tableIncludeList = "DB2INST1.A,DB2INST1.B";
         }
         return TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
