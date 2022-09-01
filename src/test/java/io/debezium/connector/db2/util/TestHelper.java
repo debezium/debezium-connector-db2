@@ -27,7 +27,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2Connection;
 import io.debezium.connector.db2.Db2ConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.schema.AbstractTopicNamingStrategy;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
@@ -99,9 +100,9 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(Db2ConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(Db2ConnectorConfig.SERVER_NAME, "testdb")
-                .with(Db2ConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+        return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "testdb")
+                .with(Db2ConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

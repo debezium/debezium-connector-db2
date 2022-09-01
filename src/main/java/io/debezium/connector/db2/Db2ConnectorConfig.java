@@ -27,7 +27,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * The list of configuration options for DB2 connector
@@ -212,9 +212,6 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -279,7 +276,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final SnapshotIsolationMode snapshotIsolationMode;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(),
+        super(Db2Connector.class, config, config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = config.getString(DATABASE_NAME);
