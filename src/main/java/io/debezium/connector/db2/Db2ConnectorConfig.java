@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -27,7 +28,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * The list of configuration options for DB2 connector
@@ -276,7 +276,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final SnapshotIsolationMode snapshotIsolationMode;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), new SystemTablesPredicate(),
+        super(Db2Connector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = config.getString(DATABASE_NAME);

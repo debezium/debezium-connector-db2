@@ -23,11 +23,11 @@ import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2Connection;
 import io.debezium.connector.db2.Db2ConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -100,7 +100,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(Db2ConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "testdb")
+        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "testdb")
                 .with(Db2ConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
