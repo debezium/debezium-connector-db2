@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -215,6 +216,12 @@ public class Db2Connection extends JdbcConnection {
             }
             return ret;
         }, "LSN to timestamp query must return exactly one value"));
+    }
+
+    @Override
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP result FROM sysibm.sysdummy1",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
     }
 
     /**
