@@ -18,7 +18,7 @@ import io.debezium.relational.TableId;
  */
 public class Db2ChangeTable extends ChangeTable {
 
-    private static final String CDC_SCHEMA = "ASNCDC";
+    private final String CDC_SCHEMA;
 
     /**
      * A LSN from which the data in the change table are relevant
@@ -35,15 +35,16 @@ public class Db2ChangeTable extends ChangeTable {
      */
     private final String db2CaptureInstance;
 
-    public Db2ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
+    public Db2ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, String tableCdcSchema) {
+        super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance, tableCdcSchema), changeTableObjectId);
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
         this.db2CaptureInstance = Db2ObjectNameQuoter.quoteNameIfNecessary(captureInstance);
+        this.CDC_SCHEMA = tableCdcSchema;
     }
 
-    public Db2ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn);
+    public Db2ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, String tableCdcSchema) {
+        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn, tableCdcSchema);
     }
 
     public String getCaptureInstance() {
@@ -69,7 +70,7 @@ public class Db2ChangeTable extends ChangeTable {
                 + getChangeTableObjectId() + ", stopLsn=" + stopLsn + "]";
     }
 
-    private static TableId resolveChangeTableId(TableId sourceTableId, String captureInstance) {
-        return sourceTableId != null ? new TableId(sourceTableId.catalog(), CDC_SCHEMA, Db2ObjectNameQuoter.quoteNameIfNecessary(captureInstance)) : null;
+    private static TableId resolveChangeTableId(TableId sourceTableId, String captureInstance, String cdcSchema) {
+        return sourceTableId != null ? new TableId(sourceTableId.catalog(), cdcSchema, Db2ObjectNameQuoter.quoteNameIfNecessary(captureInstance)) : null;
     }
 }
