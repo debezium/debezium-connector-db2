@@ -76,6 +76,8 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 50000)
                 .withDefault(JdbcConfiguration.USER, "db2inst1")
                 .withDefault(JdbcConfiguration.PASSWORD, "admin")
+                .withDefault("custom.cdc.program.schema", "ASNCDC")
+                .withDefault("custom.cdc.table.schema", "ASNCDC")
                 .build();
     }
 
@@ -86,6 +88,8 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 50000)
                 .withDefault(JdbcConfiguration.USER, "db2inst1")
                 .withDefault(JdbcConfiguration.PASSWORD, "admin")
+                .withDefault("custom.cdc.program.schema", "ASNCDC")
+                .withDefault("custom.cdc.table.schema", "ASNCDC")
                 .build();
     }
 
