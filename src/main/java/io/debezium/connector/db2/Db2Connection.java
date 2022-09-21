@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -107,10 +108,6 @@ public class Db2Connection extends JdbcConnection {
      */
     private final String realDatabaseName;
 
-    private static interface ResultSetExtractor<T> {
-        T apply(ResultSet rs) throws SQLException;
-    }
-
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
 
     /**
@@ -118,7 +115,7 @@ public class Db2Connection extends JdbcConnection {
      *
      * @param config {@link Configuration} instance, may not be null.
      */
-    public Db2Connection(Configuration config) {
+    public Db2Connection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
@@ -299,6 +296,12 @@ public class Db2Connection extends JdbcConnection {
             }
             return ret;
         }, "LSN to timestamp query must return exactly one value"));
+    }
+
+    @Override
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP result FROM sysibm.sysdummy1",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
     }
 
     /**
@@ -494,7 +497,11 @@ public class Db2Connection extends JdbcConnection {
 
     @Override
     public String quotedTableIdString(TableId tableId) {
-        return Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()) + "."
-                + Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table());
+        StringBuilder quoted = new StringBuilder();
+        if (tableId.schema() != null && !tableId.schema().isEmpty()) {
+            quoted.append(Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema())).append(".");
+        }
+        quoted.append(Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
+        return quoted.toString();
     }
 }

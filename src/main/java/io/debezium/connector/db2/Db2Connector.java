@@ -77,7 +77,7 @@ public class Db2Connector extends RelationalBaseSourceConnector {
         try (Db2Connection connection = new Db2Connection(connectorConfig.getJdbcConfig())) {
             try {
                 connection.connect();
-                connection.execute("SELECT 1 FROM sysibm.sysdummy1;");
+                connection.execute("SELECT 1 FROM sysibm.sysdummy1");
                 LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connection.username());
             }
             catch (SQLException e) {

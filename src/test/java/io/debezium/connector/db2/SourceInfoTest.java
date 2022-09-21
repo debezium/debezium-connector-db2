@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.SnapshotRecord;
@@ -27,7 +28,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(
                 Configuration.create()
-                        .with(Db2ConnectorConfig.SERVER_NAME, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .with(Db2ConnectorConfig.DATABASE_NAME, "c")
                         .build());
         source = new SourceInfo(connectorConfig);

@@ -6,6 +6,7 @@
 package io.debezium.connector.db2;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -17,6 +18,7 @@ import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Connector> {
@@ -31,13 +33,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         connection = TestHelper.testConnection();
         TestHelper.disableDbCdc(connection);
         TestHelper.disableTableCdc(connection, "A");
+        TestHelper.disableTableCdc(connection, "B");
         TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
         connection.execute(
                 "DROP TABLE IF EXISTS a",
+                "DROP TABLE IF EXISTS b",
                 "DROP TABLE IF EXISTS debezium_signal");
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
+                "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
 
         TestHelper.enableDbCdc(connection);
@@ -54,10 +59,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
             TestHelper.disableTableCdc(connection, "A");
+            TestHelper.disableTableCdc(connection, "B");
             TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
             connection.rollback();
             connection.execute(
                     "DROP TABLE IF EXISTS a",
+                    "DROP TABLE IF EXISTS b",
                     "DROP TABLE IF EXISTS debezium_signal");
             connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
@@ -70,6 +77,13 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected void populateTable() throws SQLException {
         super.populateTable(connection);
         TestHelper.enableTableCdc(connection, "A");
+    }
+
+    @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
+        TestHelper.enableTableCdc(connection, "A");
+        TestHelper.enableTableCdc(connection, "B");
     }
 
     @Override
@@ -88,13 +102,27 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     }
 
     @Override
+    protected List<String> topicNames() {
+        return List.of(topicName(), "testdb.DB2INST1.B");
+    }
+
+    @Override
     protected String tableName() {
         return "DB2INST1.A";
     }
 
     @Override
+    protected List<String> tableNames() {
+        return List.of(tableName(), "DB2INST1.B");
+    }
+
+    @Override
     protected String signalTableName() {
         return "DEBEZIUM_SIGNAL";
+    }
+
+    protected String getSignalTypeFieldName() {
+        return "TYPE";
     }
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
@@ -109,7 +137,24 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(Db2ConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST1.DEBEZIUM_SIGNAL");
+                .with(Db2ConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST1.DEBEZIUM_SIGNAL")
+                .with(Db2ConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
+    }
+
+    @Override
+    protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = "DB2INST1.B";
+        }
+        else {
+            tableIncludeList = "DB2INST1.A,DB2INST1.B";
+        }
+        return TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(Db2ConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST1.DEBEZIUM_SIGNAL")
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 
     @Override

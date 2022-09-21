@@ -25,7 +25,6 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
 public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2Partition, Db2OffsetContext> {
@@ -36,14 +35,14 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     private final Db2Connection jdbcConnection;
 
     public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection jdbcConnection, Db2DatabaseSchema schema,
-                                        EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                        EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(Db2OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -169,15 +168,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
-        return new SchemaChangeEvent(
-                snapshotContext.partition.getSourcePartition(),
-                snapshotContext.offset.getOffset(),
-                snapshotContext.offset.getSourceInfo(),
-                snapshotContext.catalogName,
-                table.id().schema(),
-                null,
-                table,
-                SchemaChangeEventType.CREATE, true);
+        return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
     @Override
