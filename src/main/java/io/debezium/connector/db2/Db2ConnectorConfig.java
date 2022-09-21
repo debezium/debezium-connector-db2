@@ -14,20 +14,20 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
  * The list of configuration options for DB2 connector
@@ -46,19 +46,26 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, true),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         */
+        INITIAL_ONLY("initial_only", true, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false);
+        SCHEMA_ONLY("schema_only", false, true);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldStream;
 
-        private SnapshotMode(String value, boolean includeData) {
+        private SnapshotMode(String value, boolean includeData, boolean shouldStream) {
             this.value = value;
             this.includeData = includeData;
+            this.shouldStream = shouldStream;
         }
 
         @Override
@@ -72,6 +79,13 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
          */
         public boolean includeData() {
             return includeData;
+        }
+
+        /**
+         * Whether the snapshot mode is followed by streaming.
+         */
+        public boolean shouldStream() {
+            return shouldStream;
         }
 
         /**
@@ -198,12 +212,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -214,6 +226,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the monitored tables. "
@@ -226,69 +239,45 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+            .name("Db2")
+            .type(
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    DATABASE_NAME)
+            .connector(
+                    SNAPSHOT_MODE,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE)
+            .excluding(
+                    SCHEMA_INCLUDE_LIST,
+                    SCHEMA_EXCLUDE_LIST,
+                    // additional fields
+                    BINARY_HANDLING_MODE,
+                    INCLUDE_SCHEMA_COMMENTS,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    SNAPSHOT_MAX_THREADS,
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
+            .create();
+
+    protected static ConfigDef configDef() {
+        return CONFIG_DEFINITION.configDef();
+    }
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(
-            RelationalDatabaseConnectorConfig.HOSTNAME,
-            PORT,
-            RelationalDatabaseConnectorConfig.USER,
-            RelationalDatabaseConnectorConfig.PASSWORD,
-            SERVER_NAME,
-            RelationalDatabaseConnectorConfig.DATABASE_NAME,
-            SNAPSHOT_MODE,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-            RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
-            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-            RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
-            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-            RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-            RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST,
-            RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
-            RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-
-    public static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-
-        Field.group(config, "DB2 Server", RelationalDatabaseConnectorConfig.HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER,
-                RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, SNAPSHOT_MODE);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
-                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
-                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-                RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST,
-                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
-
-        return config;
-    }
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA);
+        super(Db2Connector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());

@@ -44,6 +44,11 @@ public class Db2Partition implements Partition {
         return serverName.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "Db2Partition [sourcePartition=" + getSourcePartition() + "]";
+    }
+
     static class Provider implements Partition.Provider<Db2Partition> {
         private final Db2ConnectorConfig connectorConfig;
 

@@ -9,25 +9,24 @@ import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class Db2OffsetContext implements OffsetContext {
+public class Db2OffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     private static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
 
     private final Schema sourceInfoSchema;
-    private final SourceInfo sourceInfo;
     private boolean snapshotCompleted;
 
     private final TransactionContext transactionContext;
@@ -40,7 +39,7 @@ public class Db2OffsetContext implements OffsetContext {
 
     public Db2OffsetContext(Db2ConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
                             TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        sourceInfo = new SourceInfo(connectorConfig);
+        super(new SourceInfo(connectorConfig));
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
@@ -84,11 +83,6 @@ public class Db2OffsetContext implements OffsetContext {
         return sourceInfoSchema;
     }
 
-    @Override
-    public Struct getSourceInfo() {
-        return sourceInfo.struct();
-    }
-
     public TxLogPosition getChangePosition() {
         return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn());
     }
@@ -128,11 +122,6 @@ public class Db2OffsetContext implements OffsetContext {
         snapshotCompleted = true;
     }
 
-    @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
     public static class Loader implements OffsetContext.Loader<Db2OffsetContext> {
 
         private final Db2ConnectorConfig connectorConfig;
@@ -170,11 +159,6 @@ public class Db2OffsetContext implements OffsetContext {
     }
 
     @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
-    }
-
-    @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
         sourceInfo.setTableId((TableId) tableId);
@@ -183,11 +167,6 @@ public class Db2OffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

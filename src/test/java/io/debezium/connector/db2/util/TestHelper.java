@@ -20,12 +20,15 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2Connection;
 import io.debezium.connector.db2.Db2ConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
@@ -64,6 +67,8 @@ public class TestHelper {
     private static final String DISABLE_TABLE_CDC = "CALL ASNCDC.REMOVETABLE('@', '#' )";
     private static final String RESTART_ASN_CDC = "VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc')";
 
+    private static Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
+
     public static JdbcConfiguration adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.DATABASE, "testdb")
@@ -99,9 +104,9 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(Db2ConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(Db2ConnectorConfig.SERVER_NAME, "testdb")
-                .with(Db2ConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "testdb")
+                .with(Db2ConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
@@ -129,6 +134,7 @@ public class TestHelper {
             while (rs.next()) {
                 Clob clob = rs.getClob(1);
                 String test = clob.getSubString(1, (int) clob.length());
+                LOGGER.debug("Checking DB CDC status, got '{}'", test);
                 if (test.contains("is doing work")) {
                     isNotrunning = false;
                 }

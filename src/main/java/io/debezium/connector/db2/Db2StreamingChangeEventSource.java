@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -76,7 +77,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
      */
     private final Db2Connection metadataConnection;
 
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<Db2Partition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final Db2DatabaseSchema schema;
@@ -84,8 +85,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Db2ConnectorConfig connectorConfig;
 
     public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
-                                         Db2Connection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                         Db2DatabaseSchema schema) {
+                                         Db2Connection metadataConnection,
+                                         EventDispatcher<Db2Partition, TableId> dispatcher, ErrorHandler errorHandler,
+                                         Clock clock, Db2DatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -99,6 +101,11 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     @Override
     public void execute(ChangeEventSourceContext context, Db2Partition partition, Db2OffsetContext offsetContext)
             throws InterruptedException {
+        if (!connectorConfig.getSnapshotMode().shouldStream()) {
+            LOGGER.info("Streaming is not enabled in current configuration");
+            return;
+        }
+
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {
@@ -241,6 +248,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
 
                             dispatcher
                                     .dispatchDataChangeEvent(
+                                            partition,
                                             tableId,
                                             new Db2ChangeRecordEmitter(
                                                     partition,
@@ -271,7 +279,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
-        dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(),
+        dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
                 new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable,
                         metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
     }
@@ -330,8 +338,12 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             }
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
+                // this prevents potential NPE if there is no TableId information in the source info
+                offsetContext.event(currentTable.getSourceTableId(), Instant.now());
+
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
+                        partition,
                         currentTable.getSourceTableId(),
                         new Db2SchemaChangeEventEmitter(
                                 partition,
