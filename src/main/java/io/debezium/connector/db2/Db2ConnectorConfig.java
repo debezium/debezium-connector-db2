@@ -13,7 +13,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -276,8 +275,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final SnapshotIsolationMode snapshotIsolationMode;
 
     public Db2ConnectorConfig(Configuration config) {
-        super(Db2Connector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(),
-                x -> x.schema() + "." + x.table(), false, ColumnFilterMode.SCHEMA, false);
+        super(
+                Db2Connector.class,
+                config,
+                new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(),
+                false,
+                ColumnFilterMode.SCHEMA,
+                false);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
