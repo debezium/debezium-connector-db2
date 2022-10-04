@@ -56,15 +56,9 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
     @Override
     public ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> start(Configuration config) {
-        final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
+        final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(applyFetchSizeToJdbcConfig(config));
         final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
-
-        // By default do not load whole result sets into memory
-        config = config.edit()
-                .withDefault("database.responseBuffering", "adaptive")
-                .withDefault("database.fetchSize", 10_000)
-                .build();
 
         dataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
         metadataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
@@ -166,5 +160,23 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return Db2ConnectorConfig.ALL_FIELDS;
+    }
+
+    /**
+     * Applies the fetch size to the driver/jdbc configuration from the connector configuration.
+     *
+     * @param config the connector configuration
+     * @return the potentially modified configuration, never null
+     */
+    private static Configuration applyFetchSizeToJdbcConfig(Configuration config) {
+        // By default, do not load whole result sets into memory
+        if (config.getInteger(Db2ConnectorConfig.QUERY_FETCH_SIZE) > 0) {
+            final String driverPrefix = CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+            return config.edit()
+                    .withDefault(driverPrefix + "responseBuffering", "adaptive")
+                    .withDefault(driverPrefix + "fetchSize", config.getInteger(Db2ConnectorConfig.QUERY_FETCH_SIZE))
+                    .build();
+        }
+        return config;
     }
 }

@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -34,6 +35,8 @@ import io.debezium.relational.history.HistoryRecordComparator;
  * @author Jiri Pechanec, Luis Garcés-Erice
  */
 public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
+
+    public static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     protected static final int DEFAULT_PORT = 50000;
 
@@ -238,8 +241,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDescription(
+                    "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
+            .withDefault(DEFAULT_QUERY_FETCH_SIZE);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Db2")
+            .excluding(CommonConnectorConfig.QUERY_FETCH_SIZE)
             .type(
                     HOSTNAME,
                     PORT,
@@ -249,7 +258,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .connector(
                     SNAPSHOT_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE)
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
+                    QUERY_FETCH_SIZE)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
