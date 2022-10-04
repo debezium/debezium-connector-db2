@@ -138,6 +138,17 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     public void doStop() {
         try {
             if (dataConnection != null) {
+                // Db2 may have an active in-progress transaction associated with the connection and if so,
+                // it will throw an exception during shutdown because the active transaction exists. This
+                // is meant to help avoid this by rolling back the current active transaction, if exists.
+                if (dataConnection.isConnected()) {
+                    try {
+                        dataConnection.rollback();
+                    }
+                    catch (SQLException e) {
+                        // ignore
+                    }
+                }
                 dataConnection.close();
             }
         }
