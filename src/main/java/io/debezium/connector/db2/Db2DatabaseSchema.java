@@ -28,11 +28,13 @@ public class Db2DatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2DatabaseSchema.class);
 
-    public Db2DatabaseSchema(Db2ConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicNamingStrategy<TableId> topicNamingStrategy,
+    public Db2DatabaseSchema(Db2ConnectorConfig connectorConfig, Db2ValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
+                             TopicNamingStrategy<TableId> topicNamingStrategy,
                              Db2Connection connection) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
-                        new Db2ValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode()),
+                        valueConverters,
+                        new Db2DefaultValueConverter(valueConverters, connection),
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),

@@ -249,6 +249,21 @@ public class TestHelper {
         waitForCDC();
     }
 
+    public static String getCdcTableName(Db2Connection connection, String sourceTable) throws SQLException {
+        return connection.queryAndMap("SELECT CD_OWNER, CD_TABLE FROM ASNCDC.IBMSNAP_REGISTER WHERE SOURCE_OWNER='DB2INST1' AND SOURCE_TABLE = '" +
+                sourceTable + "'", rs -> rs.next() ? rs.getString(1) + "." + rs.getString(2) : null);
+    }
+
+    public static void activeTable(Db2Connection connection, String tableName) throws SQLException {
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1' AND SOURCE_TABLE = '" + tableName + "'");
+        TestHelper.refreshAndWait(connection);
+    }
+
+    public static void deactivateTable(Db2Connection connection, String tableName) throws SQLException {
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'I' WHERE SOURCE_OWNER = 'DB2INST1' AND SOURCE_TABLE = '" + tableName + "'");
+        TestHelper.refreshAndWait(connection);
+    }
+
     public static void waitForCDC() {
         try {
             Thread.sleep(WAIT_FOR_CDC);
