@@ -28,6 +28,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
@@ -150,7 +151,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     final Db2ChangeTable[] tables = getCdcTablesToQuery(partition, offsetContext);
                     tablesSlot.set(tables);
                     for (Db2ChangeTable table : tables) {
-                        if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn)) {
+                        if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn.increment())) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
                         }
@@ -272,9 +273,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
+        Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
+        offsetContext.event(newTable.getSourceTableId(), Instant.now());
         dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
-                new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable,
-                        metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
+                new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema,
+                        SchemaChangeEventType.ALTER));
+
+        newTable.setSourceTable(tableSchema);
     }
 
     private Db2ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, Db2ChangeTable[] currentChangeTables) throws Exception {

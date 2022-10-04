@@ -68,7 +68,9 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        this.schema = new Db2DatabaseSchema(connectorConfig, schemaNameAdjuster, topicNamingStrategy, dataConnection);
+
+        final Db2ValueConverters valueConverters = new Db2ValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode());
+        this.schema = new Db2DatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicNamingStrategy, dataConnection);
         this.schema.initializeStorage();
 
         Offsets<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),

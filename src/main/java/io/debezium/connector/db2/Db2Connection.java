@@ -79,7 +79,7 @@ public class Db2Connection extends JdbcConnection {
             "       CD_NEW_SYNCHPOINT, " +
             "       CD_OLD_SYNCHPOINT " +
             "from ASNCDC.IBMSNAP_REGISTER  r left JOIN SYSCAT.TABLES t ON r.SOURCE_OWNER  = t.TABSCHEMA AND r.SOURCE_TABLE = t.TABNAME " +
-            "WHERE r.SOURCE_OWNER <> '' AND 1=0 AND CD_NEW_SYNCHPOINT > ? AND CD_OLD_SYNCHPOINT < ? ";
+            "WHERE r.SOURCE_OWNER <> '' AND CD_NEW_SYNCHPOINT > ? AND (CD_OLD_SYNCHPOINT < ? OR CD_OLD_SYNCHPOINT IS NULL)";
 
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT "
             + "CAST((t.TBSPACEID * 65536 +  t.TABLEID )AS INTEGER ) as objectid, "
