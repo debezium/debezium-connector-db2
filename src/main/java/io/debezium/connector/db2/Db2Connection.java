@@ -7,6 +7,7 @@
 package io.debezium.connector.db2;
 
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -15,10 +16,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -421,5 +424,150 @@ public class Db2Connection extends JdbcConnection {
         }
         quoted.append(Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
         return quoted.toString();
+    }
+
+    @Override
+    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer[] preparers, BlockingMultiResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
+        final ResultSet[] resultSets = new ResultSet[multiQuery.length];
+        final PreparedStatement[] preparedStatements = new PreparedStatement[multiQuery.length];
+
+        try {
+            for (int i = 0; i < multiQuery.length; i++) {
+                final String query = multiQuery[i];
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("running '{}'", query);
+                }
+                // Purposely create the statement this way
+                final PreparedStatement statement = createPreparedStatement(query);
+                preparedStatements[i] = statement;
+                preparers[i].accept(statement);
+                resultSets[i] = statement.executeQuery();
+            }
+            if (resultConsumer != null) {
+                resultConsumer.accept(resultSets);
+            }
+        }
+        finally {
+            for (ResultSet rs : resultSets) {
+                if (rs != null) {
+                    try {
+                        rs.close();
+                    }
+                    catch (Exception ei) {
+                    }
+                }
+            }
+            // Db2 requires closing prepared statements to avoid caching result-set column structures
+            for (PreparedStatement ps : preparedStatements) {
+                closePreparedStatement(ps);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public JdbcConnection prepareQueryWithBlockingConsumer(String preparedQueryString, StatementPreparer preparer, BlockingResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(preparedQueryString)) {
+            preparer.accept(statement);
+            try (ResultSet resultSet = statement.executeQuery();) {
+                if (resultConsumer != null) {
+                    resultConsumer.accept(resultSet);
+                }
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public JdbcConnection prepareQuery(String preparedQueryString) throws SQLException {
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(preparedQueryString)) {
+            statement.executeQuery();
+        }
+        return this;
+    }
+
+    @Override
+    public JdbcConnection prepareQuery(String preparedQueryString, StatementPreparer preparer, ResultSetConsumer resultConsumer)
+            throws SQLException {
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(preparedQueryString)) {
+            preparer.accept(statement);
+            try (ResultSet resultSet = statement.executeQuery();) {
+                if (resultConsumer != null) {
+                    resultConsumer.accept(resultSet);
+                }
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public <T> T prepareQueryAndMap(String preparedQueryString, StatementPreparer preparer, ResultSetMapper<T> mapper)
+            throws SQLException {
+        Objects.requireNonNull(mapper, "Mapper must be provided");
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(preparedQueryString)) {
+            preparer.accept(statement);
+            try (ResultSet resultSet = statement.executeQuery();) {
+                return mapper.apply(resultSet);
+            }
+        }
+    }
+
+    @Override
+    public JdbcConnection prepareUpdate(String stmt, StatementPreparer preparer) throws SQLException {
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(stmt)) {
+            if (preparer != null) {
+                preparer.accept(statement);
+            }
+            LOGGER.trace("Executing statement '{}'", stmt);
+            statement.execute();
+        }
+        return this;
+    }
+
+    @Override
+    public JdbcConnection prepareQuery(String preparedQueryString, List<?> parameters,
+                                       ParameterResultSetConsumer resultConsumer)
+            throws SQLException {
+        // Db2 requires closing prepared statements to avoid caching result-set column structures
+        try (PreparedStatement statement = createPreparedStatement(preparedQueryString)) {
+            int index = 1;
+            for (final Object parameter : parameters) {
+                statement.setObject(index++, parameter);
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultConsumer != null) {
+                    resultConsumer.accept(parameters, resultSet);
+                }
+            }
+        }
+        return this;
+    }
+
+    private PreparedStatement createPreparedStatement(String query) {
+        try {
+            LOGGER.trace("Creating prepared statement '{}'", query);
+            return connection().prepareStatement(query);
+        }
+        catch (SQLException e) {
+            throw new ConnectException(e);
+        }
+    }
+
+    private void closePreparedStatement(PreparedStatement statement) {
+        if (statement != null) {
+            try {
+                statement.close();
+            }
+            catch (SQLException e) {
+                // ignored
+            }
+        }
     }
 }
