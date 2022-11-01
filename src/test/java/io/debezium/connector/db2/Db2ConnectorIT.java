@@ -8,8 +8,8 @@ package io.debezium.connector.db2;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
@@ -834,21 +834,21 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         assertThat(before.schema().field("C1").schema().parameters()).isNull();
         assertThat(before.schema().field("C2").schema().parameters()).isNull();
 
-        assertThat(before.schema().field("C3A").schema().parameters()).includes(
+        assertThat(before.schema().field("C3A").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
-        assertThat(before.schema().field("C3B").schema().parameters()).includes(
+        assertThat(before.schema().field("C3B").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
-        assertThat(before.schema().field("F2").schema().parameters()).includes(
+        assertThat(before.schema().field("F2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "4"));
 
-        assertThat(before.schema().field("F1").schema().parameters()).includes(
+        assertThat(before.schema().field("F1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "REAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "24"));
     }
