@@ -33,9 +33,14 @@
         <db2.user>db2inst1</db2.user>
         <db2.password>admin</db2.password>
         <db2.dbname>testdb</db2.dbname>
-        <docker.filter>debezium/db2-cdc-it</docker.filter>
+        <docker.dbs>debezium/db2-cdc-it</docker.dbs>
+        <docker.filter>${docker.dbs}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+
+        <!-- Apicurion container properties -->
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
 
     <repositories>
@@ -233,7 +238,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the SQL Server -->
-                            <name>${docker.filter}</name>
+                            <name>${docker.dbs}</name>
                             <build>
                                <dockerFileDir>${project.basedir}/src/test/docker/db2-cdc-docker</dockerFileDir>
                             </build>
@@ -256,6 +261,24 @@
                                 <wait>
                                     <time>900000</time> <!-- 900 seconds max -->
                                     <log>STOP    : DATABASE: TESTDB   : DEACTIVATED: NO</log>
+                                </wait>
+                            </run>
+                        </image>
+                        <image>
+                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <ports>
+                                    <port>${apicurio.port}:8080</port>
+                                </ports>
+                                <log>
+                                    <prefix>apicurio</prefix>
+                                    <enabled>true</enabled>
+                                    <color>blue</color>
+                                </log>
+                                <wait>
+                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <time>${apicurio.init.timeout}</time>
                                 </wait>
                             </run>
                         </image>
@@ -411,6 +434,31 @@
             <properties>
                 <skipITs>true</skipITs>
                 <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>apicurio</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>apicurio</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <use.apicurio>true</use.apicurio>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <properties>
+                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
