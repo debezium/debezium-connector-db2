@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.db2;
 
+import java.sql.SQLException;
+
+import org.junit.Before;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
+import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
 
 /**
@@ -15,6 +20,15 @@ import io.debezium.relational.TableId;
  * @author Chris Cranford
  */
 public class Db2OfflineDefaultValueIT extends AbstractDb2DefaultValueIT {
+
+    @Before
+    public void before() throws SQLException {
+        super.before();
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation(); // https://github.com/Apicurio/apicurio-registry/issues/2980
+        }
+    }
+
     @Override
     protected void performSchemaChange(Configuration config, Db2Connection connection, String alterStatement) throws Exception {
         stopConnector();
