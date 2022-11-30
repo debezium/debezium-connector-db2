@@ -94,6 +94,11 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleNumericDefaultTypes() throws Exception {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_bigint", "bigint",
                         "1", "2",
@@ -114,6 +119,11 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 // todo: DECFLOAT is currently not supported.
                 // new ColumnDefinition("val_decfloat", "decfloat", "3.14", "6.28", 3.14, 6.28, AssertionType.FIELD_DEFAULT_EQUAL),
