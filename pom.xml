@@ -458,6 +458,7 @@
                             <systemPropertyVariables>
                                 <use.apicurio>true</use.apicurio>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </plugin>
                 </plugins>
