@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.db2;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -97,9 +98,9 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
         final List<SourceRecord> tx = records.recordsForTopic("testdb.transaction");
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        Assertions.assertThat(tx).hasSize(3);
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
+        assertThat(tx).hasSize(3);
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));
