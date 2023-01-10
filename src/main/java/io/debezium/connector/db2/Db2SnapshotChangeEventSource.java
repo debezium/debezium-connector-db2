@@ -203,7 +203,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public Db2SnapshotContext(Db2Partition partition, String catalogName) throws SQLException {
+        Db2SnapshotContext(Db2Partition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
     }

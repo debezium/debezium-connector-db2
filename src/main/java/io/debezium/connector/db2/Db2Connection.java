@@ -280,7 +280,7 @@ public class Db2Connection extends JdbcConnection {
                  rs.getInt(4),
                  Lsn.valueOf(rs.getBytes(6)),
                  Lsn.valueOf(rs.getBytes(7))
-                
+
                  )
                  **/
                 changeTables.add(

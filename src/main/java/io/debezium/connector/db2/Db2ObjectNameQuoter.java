@@ -6,16 +6,16 @@
 package io.debezium.connector.db2;
 
 /**
- * By default, names in Db2 are upper case. Unless quoted, 
+ * By default, names in Db2 are upper case. Unless quoted,
  * any name in a SQL statement will interpreted as the equivalent upper case string.
- * 
+ *
  * @author Luis Garcés-Erice
  */
 
 public class Db2ObjectNameQuoter {
 
     /**
-     * This function quotes a table or schema name in Db2 if the name contains 
+     * This function quotes a table or schema name in Db2 if the name contains
      * at least one lower case character.
      *
      * @param name The name of the object.
