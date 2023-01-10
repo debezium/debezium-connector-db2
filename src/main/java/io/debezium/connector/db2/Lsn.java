@@ -87,7 +87,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     /**
      * @param lsnString - textual representation of Lsn
-     * @return LSN converted from its textual representation 
+     * @return LSN converted from its textual representation
      */
     public static Lsn valueOf(String lsnString) {
         return (lsnString == null || NULL_STRING.equals(lsnString)) ? NULL : new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
@@ -95,7 +95,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     /**
      * @param lsnBinary - binary representation of Lsn
-     * @return LSN converted from its binary representation 
+     * @return LSN converted from its binary representation
      */
     public static Lsn valueOf(byte[] lsnBinary) {
         return (lsnBinary == null) ? NULL : new Lsn(lsnBinary);
@@ -156,7 +156,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     /**
-     * Verifies whether the LSN falls into a LSN interval 
+     * Verifies whether the LSN falls into a LSN interval
      *
      * @param from start of the interval (included)
      * @param to end of the interval (excluded)
