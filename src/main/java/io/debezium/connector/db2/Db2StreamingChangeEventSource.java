@@ -369,7 +369,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
      */
     private static class ChangeTablePointer extends ChangeTableResultSet<Db2ChangeTable, TxLogPosition> {
 
-        public ChangeTablePointer(Db2ChangeTable changeTable, ResultSet resultSet) {
+        ChangeTablePointer(Db2ChangeTable changeTable, ResultSet resultSet) {
             super(changeTable, resultSet, COL_DATA);
         }
 

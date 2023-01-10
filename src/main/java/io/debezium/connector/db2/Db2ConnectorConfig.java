@@ -43,7 +43,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
@@ -64,7 +64,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         private final boolean includeData;
         private final boolean shouldStream;
 
-        private SnapshotMode(String value, boolean includeData, boolean shouldStream) {
+        SnapshotMode(String value, boolean includeData, boolean shouldStream) {
             this.value = value;
             this.includeData = includeData;
             this.shouldStream = shouldStream;
@@ -134,7 +134,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
      *
      * https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052429.html
      */
-    public static enum SnapshotIsolationMode implements EnumeratedValue {
+    public enum SnapshotIsolationMode implements EnumeratedValue {
 
         /**
          * This mode will block all reads and writes for the entire duration of the snapshot.
@@ -167,7 +167,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
         private final String value;
 
-        private SnapshotIsolationMode(String value) {
+        SnapshotIsolationMode(String value) {
             this.value = value;
         }
 
