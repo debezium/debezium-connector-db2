@@ -172,7 +172,16 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void complete(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
+    protected void completed(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
+        close(snapshotContext);
+    }
+
+    @Override
+    protected void aborted(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
+        close(snapshotContext);
+    }
+
+    private void close(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart);
         }
