@@ -200,12 +200,6 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                             }
                             if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
                                     tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
-                                /*
-                                 * LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
-                                 * tableWithSmallestLsn.getChangePosition());
-                                 * tableWithSmallestLsn.next();
-                                 * continue;
-                                 */
                                 LOGGER.warn(
                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                                 LOGGER.warn("PAY ATTENTION: Table change {} , its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
