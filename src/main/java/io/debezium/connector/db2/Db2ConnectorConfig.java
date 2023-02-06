@@ -246,6 +246,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(Db2SourceInfoStructMaker.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Db2")
             .excluding(CommonConnectorConfig.QUERY_FETCH_SIZE)
@@ -313,7 +316,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new Db2SourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     private static class SystemTablesPredicate implements TableFilter {
