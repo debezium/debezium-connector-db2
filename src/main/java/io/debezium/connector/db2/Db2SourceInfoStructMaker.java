@@ -13,10 +13,11 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 public class Db2SourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    private final Schema schema;
+    private Schema schema;
 
-    public Db2SourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
-        super(connector, version, connectorConfig);
+    @Override
+    public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
+        super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.db2.Source")
                 .field(SourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
