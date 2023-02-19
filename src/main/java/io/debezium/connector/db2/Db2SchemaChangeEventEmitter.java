@@ -21,14 +21,20 @@ public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
     private final Db2OffsetContext offsetContext;
     private final Db2ChangeTable changeTable;
     private final Table tableSchema;
+    private final Db2DatabaseSchema schema;
     private final SchemaChangeEventType eventType;
 
-    public Db2SchemaChangeEventEmitter(Db2Partition partition, Db2OffsetContext offsetContext,
-                                       Db2ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
+    public Db2SchemaChangeEventEmitter(Db2Partition partition,
+                                       Db2OffsetContext offsetContext,
+                                       Db2ChangeTable changeTable,
+                                       Table tableSchema,
+                                       Db2DatabaseSchema schema,
+                                       SchemaChangeEventType eventType) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
+        this.schema = schema;
         this.eventType = eventType;
     }
 
@@ -43,7 +49,8 @@ public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
                 "N/A",
                 tableSchema,
                 false);
-
-        receiver.schemaChangeEvent(event);
+        if (!schema.skipSchemaChangeEvent(event)) {
+            receiver.schemaChangeEvent(event);
+        }
     }
 }

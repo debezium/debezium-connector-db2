@@ -276,7 +276,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         offsetContext.event(newTable.getSourceTableId(), Instant.now());
         dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
-                new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema,
+                new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
                         SchemaChangeEventType.ALTER));
 
         newTable.setSourceTable(tableSchema);
@@ -348,6 +348,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 offsetContext,
                                 currentTable,
                                 dataConnection.getTableSchemaFromTable(currentTable),
+                                schema,
                                 SchemaChangeEventType.CREATE));
             }
             tables.add(currentTable);
