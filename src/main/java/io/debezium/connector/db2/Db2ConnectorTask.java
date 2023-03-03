@@ -19,6 +19,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -57,11 +59,13 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     @Override
     public ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> start(Configuration config) {
         final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(applyFetchSizeToJdbcConfig(config));
-        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
-        dataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
-        metadataConnection = new Db2Connection(connectorConfig.getJdbcConfig());
+        MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new Db2Connection(connectorConfig.getJdbcConfig()));
+        dataConnection = connectionFactory.mainConnection();
+        metadataConnection = connectionFactory.newConnection();
         try {
             dataConnection.setAutoCommit(false);
         }
@@ -113,7 +117,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 errorHandler,
                 Db2Connector.class,
                 connectorConfig,
-                new Db2ChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
+                new Db2ChangeEventSourceFactory(connectorConfig, metadataConnection, connectionFactory, errorHandler, dispatcher, clock, schema),
                 new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
                 schema);

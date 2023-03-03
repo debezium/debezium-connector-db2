@@ -7,6 +7,7 @@ package io.debezium.connector.db2;
 
 import java.util.Optional;
 
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -24,18 +25,19 @@ import io.debezium.util.Strings;
 public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2Partition, Db2OffsetContext> {
 
     private final Db2ConnectorConfig configuration;
-    private final Db2Connection dataConnection;
     private final Db2Connection metadataConnection;
+    private final MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<Db2Partition, TableId> dispatcher;
     private final Clock clock;
     private final Db2DatabaseSchema schema;
 
-    public Db2ChangeEventSourceFactory(Db2ConnectorConfig configuration, Db2Connection dataConnection, Db2Connection metadataConnection,
-                                       ErrorHandler errorHandler, EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, Db2DatabaseSchema schema) {
+    public Db2ChangeEventSourceFactory(Db2ConnectorConfig configuration, Db2Connection metadataConnection,
+                                       MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory, ErrorHandler errorHandler,
+                                       EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, Db2DatabaseSchema schema) {
         this.configuration = configuration;
-        this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
+        this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -44,14 +46,14 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
 
     @Override
     public SnapshotChangeEventSource<Db2Partition, Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
-        return new Db2SnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
+        return new Db2SnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
     public StreamingChangeEventSource<Db2Partition, Db2OffsetContext> getStreamingChangeEventSource() {
         return new Db2StreamingChangeEventSource(
                 configuration,
-                dataConnection,
+                connectionFactory.mainConnection(),
                 metadataConnection,
                 dispatcher,
                 errorHandler,
@@ -71,7 +73,7 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
         }
         final SignalBasedIncrementalSnapshotChangeEventSource<Db2Partition, TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                dataConnection,
+                connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,
