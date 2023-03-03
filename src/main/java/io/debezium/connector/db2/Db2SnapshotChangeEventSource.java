@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotIsolationMode;
+import io.debezium.connector.db2.Db2OffsetContext.Loader;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -34,11 +36,12 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     private final Db2ConnectorConfig connectorConfig;
     private final Db2Connection jdbcConnection;
 
-    public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection jdbcConnection, Db2DatabaseSchema schema,
-                                        EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
-        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
+    public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory,
+                                        Db2DatabaseSchema schema, EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock,
+                                        SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.jdbcConnection = connectionFactory.mainConnection();
     }
 
     @Override
@@ -215,6 +218,11 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
         Db2SnapshotContext(Db2Partition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
+    }
+
+    @Override
+    protected Db2OffsetContext copyOffset(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
+        return new Loader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 
 }
