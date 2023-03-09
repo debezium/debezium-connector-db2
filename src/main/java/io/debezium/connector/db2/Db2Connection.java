@@ -117,7 +117,6 @@ public class Db2Connection extends JdbcConnection {
             this.GET_ALL_CHANGES_FOR_TABLE = "WITH tmp AS (SELECT cdc.IBMSNAP_OPERATION, cdc.IBMSNAP_COMMITSEQ, cdc.IBMSNAP_INTENTSEQ, " +
                     "ROW_NUMBER() OVER (PARTITION BY cdc.IBMSNAP_COMMITSEQ ORDER BY cdc.IBMSNAP_INTENTSEQ) rn FROM "
                     + this.TABLE_CDC_SCHEMA + ".# cdc WHERE  cdc.IBMSNAP_COMMITSEQ >= ? AND cdc.IBMSNAP_COMMITSEQ <= ? " +
-                    " order by IBMSNAP_COMMITSEQ, IBMSNAP_INTENTSEQ), " +
                     " tmp2 AS (SELECT " +
                     " CASE " +
                     " WHEN cdc.IBMSNAP_OPERATION = 'D' AND cdc2.IBMSNAP_OPERATION ='I' THEN 3 " +
