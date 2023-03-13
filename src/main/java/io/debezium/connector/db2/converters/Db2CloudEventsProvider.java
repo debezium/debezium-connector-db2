@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.db2.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
-import io.debezium.connector.db2.Module;
+import io.debezium.connector.db2.transforms.Db2AbstractRecordParserProvider;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -19,17 +16,7 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Chris Cranford
  */
-public class Db2CloudEventsProvider implements CloudEventsProvider {
-    @Override
-    public String getName() {
-        return Module.name();
-    }
-
-    @Override
-    public RecordParser createParser(Schema schema, Struct record) {
-        return new Db2RecordParser(schema, record);
-    }
-
+public class Db2CloudEventsProvider extends Db2AbstractRecordParserProvider implements CloudEventsProvider {
     @Override
     public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
         return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase);

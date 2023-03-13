@@ -7,6 +7,7 @@ package io.debezium.connector.db2.converters;
 
 import java.util.Set;
 
+import io.debezium.connector.AbstractSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -27,7 +28,9 @@ public class Db2RecordParser extends RecordParser {
 
     static final Set<String> DB2_SOURCE_FIELD = Collect.unmodifiableSet(
             CHANGE_LSN_KEY,
-            COMMIT_LSN_KEY);
+            COMMIT_LSN_KEY,
+            AbstractSourceInfo.SCHEMA_NAME_KEY,
+            AbstractSourceInfo.TABLE_NAME_KEY);
 
     public Db2RecordParser(Schema schema, Struct record) {
         super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
