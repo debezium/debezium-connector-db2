@@ -7,9 +7,9 @@ package io.debezium.connector.db2.transforms;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
-import io.debezium.transforms.spi.QualifiedTableNameResolver;
+import io.debezium.transforms.spi.QualifiedDataCollectionNameResolver;
 
-public class Db2QualifiedTableNameResolver extends Db2AbstractRecordParserProvider implements QualifiedTableNameResolver {
+public class Db2QualifiedDataCollectionNameResolver extends Db2AbstractRecordParserProvider implements QualifiedDataCollectionNameResolver {
     public static final String FULLY_QUALIFIED_NAME_FORMAT = "%s.%s";
 
     @Override

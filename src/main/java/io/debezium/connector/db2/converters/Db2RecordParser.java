@@ -7,11 +7,11 @@ package io.debezium.connector.db2.converters;
 
 import java.util.Set;
 
-import io.debezium.connector.AbstractSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;

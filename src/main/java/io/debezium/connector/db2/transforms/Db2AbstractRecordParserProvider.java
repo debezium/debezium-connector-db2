@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.db2.transforms;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.connector.db2.Module;
 import io.debezium.connector.db2.converters.Db2RecordParser;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.transforms.spi.RecordParserProvider;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 public abstract class Db2AbstractRecordParserProvider implements RecordParserProvider {
 
