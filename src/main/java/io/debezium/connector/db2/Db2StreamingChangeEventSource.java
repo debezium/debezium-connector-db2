@@ -84,6 +84,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Db2DatabaseSchema schema;
     private final Duration pollInterval;
     private final Db2ConnectorConfig connectorConfig;
+    private Db2OffsetContext effectiveOffsetContext;
 
     public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
                                          Db2Connection metadataConnection,
@@ -97,6 +98,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         this.clock = clock;
         this.schema = schema;
         this.pollInterval = connectorConfig.getPollInterval();
+    }
+
+    public void init(Db2OffsetContext offsetContext) {
+
+        this.effectiveOffsetContext = offsetContext != null
+                ? offsetContext
+                : new Db2OffsetContext(connectorConfig, TxLogPosition.NULL, false, false);
     }
 
     @Override
@@ -266,6 +274,11 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
+    }
+
+    @Override
+    public Db2OffsetContext getOffsetContext() {
+        return effectiveOffsetContext;
     }
 
     private void migrateTable(Db2Partition partition, Db2OffsetContext offsetContext,
