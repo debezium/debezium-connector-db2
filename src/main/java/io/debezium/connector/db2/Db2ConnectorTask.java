@@ -7,6 +7,7 @@ package io.debezium.connector.db2;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -19,6 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -26,6 +28,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -102,6 +105,12 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
         final Db2EventMetadataProvider metadataProvider = new Db2EventMetadataProvider();
 
+        SignalProcessor<Db2Partition, Db2OffsetContext> signalProcessor = new SignalProcessor<>(
+                Db2Connector.class, connectorConfig, Map.of(),
+                getAvailableSignalChannels(),
+                DocumentReader.defaultReader(),
+                previousOffsets);
+
         final EventDispatcher<Db2Partition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -110,7 +119,10 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                schemaNameAdjuster);
+                schemaNameAdjuster,
+                signalProcessor);
+
+        dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
         ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
@@ -120,7 +132,8 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 new Db2ChangeEventSourceFactory(connectorConfig, metadataConnection, connectionFactory, errorHandler, dispatcher, clock, schema),
                 new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
-                schema);
+                schema,
+                signalProcessor);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
