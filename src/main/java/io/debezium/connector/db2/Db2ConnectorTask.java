@@ -28,9 +28,11 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -124,6 +126,9 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
         dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
+        NotificationService<Db2Partition, Db2OffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
+
         ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
@@ -133,7 +138,8 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
                 schema,
-                signalProcessor);
+                signalProcessor,
+                notificationService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
