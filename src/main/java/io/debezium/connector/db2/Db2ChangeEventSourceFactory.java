@@ -10,6 +10,7 @@ import java.util.Optional;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -65,7 +66,8 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
     public Optional<IncrementalSnapshotChangeEventSource<Db2Partition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                             Db2OffsetContext offsetContext,
                                                                                                                                             SnapshotProgressListener<Db2Partition> snapshotProgressListener,
-                                                                                                                                            DataChangeEventListener<Db2Partition> dataChangeEventListener) {
+                                                                                                                                            DataChangeEventListener<Db2Partition> dataChangeEventListener,
+                                                                                                                                            NotificationService<Db2Partition, Db2OffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
@@ -78,7 +80,8 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
+                dataChangeEventListener,
+                notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }
