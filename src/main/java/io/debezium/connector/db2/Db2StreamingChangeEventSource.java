@@ -288,7 +288,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         LOGGER.info("Migrating schema to {}", newTable);
         Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         offsetContext.event(newTable.getSourceTableId(), Instant.now());
-        dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
+        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
                 new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
                         SchemaChangeEventType.ALTER));
 
@@ -355,6 +355,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
                         partition,
+                        offsetContext,
                         currentTable.getSourceTableId(),
                         new Db2SchemaChangeEventEmitter(
                                 partition,
