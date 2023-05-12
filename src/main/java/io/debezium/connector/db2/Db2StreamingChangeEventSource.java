@@ -258,7 +258,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                                     operation,
                                                     data,
                                                     dataNext,
-                                                    clock));
+                                                    clock, connectorConfig));
                             tableWithSmallestLsn.next();
                         }
                     });
