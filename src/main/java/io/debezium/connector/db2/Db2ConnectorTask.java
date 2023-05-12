@@ -69,8 +69,10 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         final Configuration jdbcConfig = config.filter(
                 x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(Db2ConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
-        dataConnection = new Db2Connection(jdbcConfig);
-        metadataConnection = new Db2Connection(jdbcConfig);
+        final Configuration customProps = config.filter(x -> (x.startsWith("custom.")));
+        Configuration jdbcAndCustom = jdbcConfig.edit().with(customProps).build();
+        dataConnection = new Db2Connection(jdbcAndCustom);
+        metadataConnection = new Db2Connection(jdbcAndCustom);
         try {
             dataConnection.setAutoCommit(false);
         }
