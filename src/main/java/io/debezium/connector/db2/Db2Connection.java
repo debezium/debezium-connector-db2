@@ -232,7 +232,6 @@ public class Db2Connection extends JdbcConnection {
 
             idx++;
         }
-        LOGGER.info("QUERIES::: in PrepareQuery", Arrays.toString(queries), intervalFromLsn, intervalToLsn);
         prepareQuery(queries, preparers, consumer);
     }
 
