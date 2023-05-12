@@ -28,8 +28,8 @@ public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final Object[] dataNext;
 
     public Db2ChangeRecordEmitter(Partition partition, OffsetContext offset, int operation, Object[] data,
-                                  Object[] dataNext, Clock clock) {
-        super(partition, offset, clock);
+                                  Object[] dataNext, Clock clock, Db2ConnectorConfig connectorConfig) {
+        super(partition, offset, clock, connectorConfig);
 
         this.operation = operation;
         this.data = data;
