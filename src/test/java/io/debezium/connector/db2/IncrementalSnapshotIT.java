@@ -166,4 +166,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected String valueFieldName() {
         return "AA";
     }
+
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 250;
+    }
 }
