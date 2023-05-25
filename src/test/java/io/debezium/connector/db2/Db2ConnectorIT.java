@@ -272,7 +272,9 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
         TestHelper.refreshAndWait(connection);
 
-        final SourceRecords records1 = consumeRecordsByTopic(2);
+        // Ignore all initial create records - with original ID
+        final var records1 = consumeRecordsButSkipUntil(2,
+                (key, value) -> (value == null) || !value.getString("op").equals("c") || key.getInt32("ID") != 1);
         stopConnector();
 
         start(Db2Connector.class, config);
