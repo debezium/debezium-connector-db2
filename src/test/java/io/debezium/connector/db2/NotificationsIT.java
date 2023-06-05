@@ -50,6 +50,22 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, Db2ConnectorConfig.SnapshotMode.INITIAL);
     }
 
+
+    @Override
+    protected String connector() {
+        return "db2_server";
+    }
+
+    @Override
+    protected String database() {
+        return TestHelper.TEST_DATABASE;
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_DATABASE;
+    }
+
     @Override
     protected String snapshotStatusResult() {
         return "COMPLETED";
