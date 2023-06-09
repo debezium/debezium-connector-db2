@@ -7,7 +7,6 @@ package io.debezium.connector.db2;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.util.Clock;
 
@@ -16,7 +15,7 @@ import io.debezium.util.Clock;
  *
  * @author Jiri Pechanec
  */
-public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter {
+public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter<Db2Partition> {
 
     public static final int OP_DELETE = 1;
     public static final int OP_INSERT = 2;
@@ -27,7 +26,7 @@ public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final Object[] data;
     private final Object[] dataNext;
 
-    public Db2ChangeRecordEmitter(Partition partition, OffsetContext offset, int operation, Object[] data,
+    public Db2ChangeRecordEmitter(Db2Partition partition, OffsetContext offset, int operation, Object[] data,
                                   Object[] dataNext, Clock clock, Db2ConnectorConfig connectorConfig) {
         super(partition, offset, clock, connectorConfig);
 
