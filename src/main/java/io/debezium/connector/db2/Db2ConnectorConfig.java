@@ -246,12 +246,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
-    public static final Field SOURCE_INFO_STRUCT_MAKER = Field.create("sourceinfo.struct.maker")
-            .withDisplayName("Source info struct maker class")
-            .withType(ConfigDef.Type.CLASS)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("The name of the SourceInfoStructMaker class that returns SourceInfo schema and struct.")
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
@@ -268,8 +263,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     SNAPSHOT_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
-                    QUERY_FETCH_SIZE,
-                    SOURCE_INFO_STRUCT_MAKER)
+                    QUERY_FETCH_SIZE)
+            .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
