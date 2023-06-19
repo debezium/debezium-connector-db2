@@ -46,8 +46,9 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
     }
 
     @Override
-    public SnapshotChangeEventSource<Db2Partition, Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
-        return new Db2SnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+    public SnapshotChangeEventSource<Db2Partition, Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<Db2Partition> snapshotProgressListener,
+                                                                                                  NotificationService<Db2Partition, Db2OffsetContext> notificationService) {
+        return new Db2SnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
     }
 
     @Override

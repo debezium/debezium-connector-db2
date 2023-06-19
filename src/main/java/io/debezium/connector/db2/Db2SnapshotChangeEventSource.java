@@ -22,6 +22,7 @@ import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.db2.Db2OffsetContext.Loader;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -38,8 +39,9 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory,
                                         Db2DatabaseSchema schema, EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock,
-                                        SnapshotProgressListener<Db2Partition> snapshotProgressListener) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+                                        SnapshotProgressListener<Db2Partition> snapshotProgressListener,
+                                        NotificationService<Db2Partition, Db2OffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
     }
