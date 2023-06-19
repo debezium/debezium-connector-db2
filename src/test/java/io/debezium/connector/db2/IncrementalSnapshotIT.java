@@ -171,4 +171,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected int defaultIncrementalSnapshotChunkSize() {
         return 250;
     }
+
+    @Override
+    protected String connector() {
+        return "db2_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_DATABASE;
+    }
 }
