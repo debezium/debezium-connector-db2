@@ -56,11 +56,6 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
     }
 
     @Override
-    protected String database() {
-        return TestHelper.TEST_DATABASE;
-    }
-
-    @Override
     protected String server() {
         return TestHelper.TEST_DATABASE;
     }
