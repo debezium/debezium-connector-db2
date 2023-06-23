@@ -124,8 +124,6 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 schemaNameAdjuster,
                 signalProcessor);
 
-        dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
-
         NotificationService<Db2Partition, Db2OffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
