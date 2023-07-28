@@ -47,9 +47,13 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset, boolean isBlocking) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
+
+        if (isBlocking) {
+            return new SnapshottingTask(true, true);
+        }
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
