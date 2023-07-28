@@ -269,6 +269,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
+
+                if (context.isPaused()) {
+                    LOGGER.info("Streaming will now pause");
+                    context.streamingPaused();
+                    context.waitSnapshotCompletion();
+                    LOGGER.info("Streaming resumed");
+                }
             }
         }
         catch (Exception e) {
