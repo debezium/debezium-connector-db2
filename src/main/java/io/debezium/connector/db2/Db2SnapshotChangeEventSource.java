@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,6 +24,7 @@ import io.debezium.connector.db2.Db2OffsetContext.Loader;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -47,13 +49,13 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset, boolean isBlocking) {
+    public SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
-        if (isBlocking) {
-            return new SnapshottingTask(true, true);
-        }
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -72,7 +74,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
     }
 
     @Override
