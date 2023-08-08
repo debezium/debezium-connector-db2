@@ -32,13 +32,16 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         connection = TestHelper.testConnection();
         TestHelper.disableDbCdc(connection);
         TestHelper.disableTableCdc(connection, "A");
+        TestHelper.disableTableCdc(connection, "B");
         TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
         connection.execute(
                 "DROP TABLE IF EXISTS a",
+                "DROP TABLE IF EXISTS b",
                 "DROP TABLE IF EXISTS debezium_signal");
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
+                "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
 
         TestHelper.enableDbCdc(connection);
@@ -55,10 +58,12 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
             TestHelper.disableTableCdc(connection, "A");
+            TestHelper.disableTableCdc(connection, "B");
             TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
             connection.rollback();
             connection.execute(
                     "DROP TABLE IF EXISTS a",
+                    "DROP TABLE IF EXISTS b",
                     "DROP TABLE IF EXISTS debezium_signal");
             connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
@@ -77,6 +82,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     protected void populateTables() throws SQLException {
         super.populateTables();
         TestHelper.enableTableCdc(connection, "A");
+        TestHelper.enableTableCdc(connection, "B");
     }
 
     @Override
@@ -101,7 +107,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> topicNames() {
-        return List.of(topicName());
+        return List.of(topicName(), "testdb.DB2INST1.B");
     }
 
     @Override
@@ -111,7 +117,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> tableNames() {
-        return List.of(tableName());
+        return List.of(tableName(), "DB2INST1.B");
     }
 
     @Override
@@ -124,6 +130,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, Db2ConnectorConfig.SnapshotMode.INITIAL)
                 .with(Db2ConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST1.DEBEZIUM_SIGNAL")
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE_TABLES, "DB2INST1.A")
                 .with(Db2ConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
     }
 

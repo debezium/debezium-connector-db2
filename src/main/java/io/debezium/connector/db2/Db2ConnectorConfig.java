@@ -28,6 +28,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The list of configuration options for DB2 connector
@@ -354,7 +355,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
      * Returns any SELECT overrides, if present.
      */
     @Override
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
         String tableList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
 
         if (tableList == null) {
