@@ -29,6 +29,7 @@ import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 
@@ -74,7 +75,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
@@ -149,7 +150,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
                                       RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
-                                      Db2OffsetContext previousOffset)
+                                      Db2OffsetContext previousOffset, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
@@ -165,11 +166,14 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
             LOGGER.info("Reading structure of schema '{}'", schema);
 
+            Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
+                    : connectorConfig.getTableFilters().dataCollectionFilter();
+
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     null,
                     schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
+                    tableFilter,
                     null,
                     false);
         }
@@ -177,8 +181,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     @Override
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext,
-                                                    Table table)
-            throws SQLException {
+                                                    Table table) {
         return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
