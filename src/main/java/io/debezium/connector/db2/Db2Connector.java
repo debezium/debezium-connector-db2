@@ -77,7 +77,7 @@ public class Db2Connector extends RelationalBaseSourceConnector {
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         // Try to connect to the database ...
         Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
-        try (Db2Connection connection = new Db2Connection(connectorConfig.getJdbcConfig())) {
+        try (Db2Connection connection = new Db2Connection(connectorConfig)) {
             try {
                 connection.connect();
                 connection.execute("SELECT 1 FROM sysibm.sysdummy1");
@@ -102,7 +102,7 @@ public class Db2Connector extends RelationalBaseSourceConnector {
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
         Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
-        try (Db2Connection connection = new Db2Connection(connectorConfig.getJdbcConfig())) {
+        try (Db2Connection connection = new Db2Connection(connectorConfig)) {
             return new ArrayList<>(
                     connection.readTableNames(null, null, null, new String[]{ "TABLE" }));
         }

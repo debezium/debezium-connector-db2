@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -37,6 +38,8 @@ import io.debezium.spi.schema.DataCollectionId;
  * @author Jiri Pechanec, Luis Garcés-Erice
  */
 public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
+
+    private static final String DEFAULT_CDC_SCHEMA = "ASNCDC";
 
     public static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
@@ -292,6 +295,71 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         }
     }
 
+    /**
+     * The set of supported Db2 platforms
+     */
+    public enum Db2Platform implements EnumeratedValue {
+
+        /**
+         * Linux, Unix, Windows
+         */
+        LUW("LUW"),
+
+        /**
+         * z/OS
+         */
+        Z("ZOS");
+
+        private final String value;
+
+        Db2Platform(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static Db2Platform parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (Db2Platform option : Db2Platform.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static Db2Platform parse(String value, String defaultValue) {
+            Db2Platform mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -336,6 +404,38 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                             + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                             + "snapshot is taken.");
 
+    public static final Field CDC_CONTROL_SCHEMA = Field.create("cdc.control.schema")
+            .withDisplayName("CDC control schema")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_CDC_SCHEMA)
+            .withDescription(
+                    "The name of the schema where CDC control structures are located; defaults to '" + DEFAULT_CDC_SCHEMA + "'");
+
+    public static final Field CDC_CHANGE_TABLES_SCHEMA = Field.create("cdc.change.tables.schema")
+            .withDisplayName("CDC change tables schema")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_CDC_SCHEMA)
+            .withDescription(
+                    "The name of the schema where CDC change tables are located; defaults to '" + DEFAULT_CDC_SCHEMA + "'");
+
+    public static final Field DB2_PLATFORM = Field.create("db2.platform")
+            .withDisplayName("Db2 platform")
+            .withEnum(Db2Platform.class, Db2Platform.LUW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Informs connector which Db2 implementation platform it is connected to. "
+                    + "The default is '" + Db2Platform.LUW
+                    + "', which means Windows, UNIX, Linux. "
+                    + "Using a value of '" + Db2Platform.Z
+                    + "' ensures that the Db2 for z/OS specific SQL statements are used.");
+
     public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
             .withDescription(
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
@@ -358,7 +458,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     SNAPSHOT_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
-                    QUERY_FETCH_SIZE)
+                    QUERY_FETCH_SIZE,
+                    CDC_CONTROL_SCHEMA,
+                    CDC_CHANGE_TABLES_SCHEMA,
+                    DB2_PLATFORM)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -381,10 +484,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     private final String databaseName;
+
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-
     private final SnapshotLockingMode snapshotLockingMode;
+
+    private final Db2Platform db2Platform;
+    private final String cdcChangeTablesSchema;
+    private final String cdcControlSchema;
 
     public Db2ConnectorConfig(Configuration config) {
         super(
@@ -400,6 +507,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+
+        this.db2Platform = Db2Platform.parse(config.getString(DB2_PLATFORM), DB2_PLATFORM.defaultValueAsString());
+        this.cdcChangeTablesSchema = config.getString(CDC_CHANGE_TABLES_SCHEMA);
+        this.cdcControlSchema = config.getString(CDC_CONTROL_SCHEMA);
     }
 
     public String getDatabaseName() {
@@ -418,6 +529,18 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         return snapshotMode;
     }
 
+    public Db2Platform getDb2Platform() {
+        return db2Platform;
+    }
+
+    public String getCdcChangeTablesSchema() {
+        return cdcChangeTablesSchema;
+    }
+
+    public String getCdcControlSchema() {
+        return cdcControlSchema;
+    }
+
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
@@ -429,7 +552,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         public boolean isIncluded(TableId t) {
             return t.schema() != null &&
                     !(t.table().toLowerCase().startsWith("ibmsnap_") ||
-                            t.schema().toUpperCase().startsWith("ASNCDC") ||
+                            t.schema().toUpperCase().startsWith(DEFAULT_CDC_SCHEMA) ||
                             t.schema().toUpperCase().startsWith("SYSTOOLS") ||
                             t.table().toLowerCase().startsWith("ibmqrep_"));
 

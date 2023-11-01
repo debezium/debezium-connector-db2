@@ -76,8 +76,6 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 50000)
                 .withDefault(JdbcConfiguration.USER, "db2inst1")
                 .withDefault(JdbcConfiguration.PASSWORD, "admin")
-                .withDefault("custom.cdc.program.schema", "ASNCDC")
-                .withDefault("custom.cdc.table.schema", "ASNCDC")
                 .build();
     }
 
@@ -88,8 +86,6 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 50000)
                 .withDefault(JdbcConfiguration.USER, "db2inst1")
                 .withDefault(JdbcConfiguration.PASSWORD, "admin")
-                .withDefault("custom.cdc.program.schema", "ASNCDC")
-                .withDefault("custom.cdc.table.schema", "ASNCDC")
                 .build();
     }
 
@@ -111,11 +107,11 @@ public class TestHelper {
     }
 
     public static Db2Connection adminConnection() {
-        return new Db2Connection(TestHelper.adminJdbcConfig());
+        return new Db2Connection(new Db2ConnectorConfig(defaultConfig().build()));
     }
 
     public static Db2Connection testConnection() {
-        return new Db2Connection(TestHelper.defaultJdbcConfig());
+        return new Db2Connection(new Db2ConnectorConfig(defaultConfig().build()));
     }
 
     /**
