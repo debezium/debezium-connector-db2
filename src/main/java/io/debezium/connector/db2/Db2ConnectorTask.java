@@ -70,7 +70,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new Db2Connection(connectorConfig.getJdbcConfig()));
+                () -> new Db2Connection(connectorConfig));
         dataConnection = connectionFactory.mainConnection();
         metadataConnection = connectionFactory.newConnection();
         try {
