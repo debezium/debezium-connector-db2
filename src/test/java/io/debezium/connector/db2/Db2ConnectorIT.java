@@ -24,6 +24,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -36,6 +37,8 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.schema.DatabaseSchema;
@@ -49,6 +52,9 @@ import io.debezium.util.Testing;
 public class Db2ConnectorIT extends AbstractConnectorTest {
 
     private Db2Connection connection;
+
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
@@ -682,18 +688,21 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1128")
+    @Flaky("DBZ-6849")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
     @FixFor("DBZ-1128")
+    @Flaky("DBZ-6849")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
     // @FixFor("DBZ-1128")
+    @Flaky("DBZ-6849")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }

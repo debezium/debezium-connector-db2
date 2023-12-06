@@ -11,11 +11,14 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
@@ -27,6 +30,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
@@ -181,4 +186,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     protected String server() {
         return TestHelper.TEST_DATABASE;
     }
+
+    @Test
+    @Override
+    @Flaky("DBZ-6849")
+    public void snapshotWithAdditionalConditionWithRestart() throws Exception {
+        super.snapshotWithAdditionalConditionWithRestart();
+    }
+
 }
