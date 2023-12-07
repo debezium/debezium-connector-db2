@@ -41,6 +41,9 @@
         <!-- Apicurion container properties -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+
+        <!-- Flaky Test Support -->
+        <fail.flaky.tests>true</fail.flaky.tests>
     </properties>
 
     <repositories>
@@ -344,6 +347,7 @@
                         <database.user>${db2.user}</database.user>
                         <database.password>${db2.password}</database.password>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <failFlakyTests>${fail.flaky.tests}</failFlakyTests>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
