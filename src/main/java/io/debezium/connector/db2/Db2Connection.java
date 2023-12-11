@@ -550,6 +550,11 @@ public class Db2Connection extends JdbcConnection {
         return this;
     }
 
+    @Override
+    public TableId createTableId(String databaseName, String schemaName, String tableName) {
+        return new TableId(null, schemaName, tableName);
+    }
+
     private PreparedStatement createPreparedStatement(String query) {
         try {
             LOGGER.trace("Creating prepared statement '{}'", query);
