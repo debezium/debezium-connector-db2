@@ -6,6 +6,7 @@
 package io.debezium.connector.db2;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,10 +18,12 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -93,5 +96,18 @@ public class Db2Connector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(Db2ConnectorConfig.ALL_FIELDS);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<TableId> getMatchingCollections(Configuration config) {
+        Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
+        try (Db2Connection connection = new Db2Connection(connectorConfig.getJdbcConfig())) {
+            return new ArrayList<>(
+                    connection.readTableNames(null, null, null, new String[]{ "TABLE" }));
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 }
