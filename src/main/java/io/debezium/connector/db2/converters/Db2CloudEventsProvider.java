@@ -29,7 +29,7 @@ public class Db2CloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase);
+    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }
