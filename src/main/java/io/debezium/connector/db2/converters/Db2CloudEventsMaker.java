@@ -17,8 +17,8 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class Db2CloudEventsMaker extends CloudEventsMaker {
 
-    public Db2CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public Db2CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override
