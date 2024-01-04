@@ -52,7 +52,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     @Override
     public SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
         boolean snapshotSchema = true;
-        boolean snapshotData = true;
+        boolean snapshotData;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
@@ -79,8 +79,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SnapshotContext<Db2Partition, Db2OffsetContext> prepare(Db2Partition partition) throws Exception {
-        return new Db2SnapshotContext(partition, jdbcConnection.getRealDatabaseName());
+    protected SnapshotContext<Db2Partition, Db2OffsetContext> prepare(Db2Partition partition, boolean onDemand) {
+        return new Db2SnapshotContext(partition, jdbcConnection.getRealDatabaseName(), onDemand);
     }
 
     @Override
@@ -166,7 +166,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
             LOGGER.info("Reading structure of schema '{}'", schema);
 
-            Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
+            Tables.TableFilter tableFilter = snapshottingTask.isOnDemand() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
                     : connectorConfig.getTableFilters().dataCollectionFilter();
 
             jdbcConnection.readSchema(
@@ -226,8 +226,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        Db2SnapshotContext(Db2Partition partition, String catalogName) throws SQLException {
-            super(partition, catalogName);
+        Db2SnapshotContext(Db2Partition partition, String catalogName, boolean onDemand) {
+            super(partition, catalogName, onDemand);
         }
     }
 
