@@ -52,6 +52,10 @@ public class Db2ValueConverters extends JdbcValueConverters {
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return SchemaBuilder.int16();
+            case Types.OTHER:
+                if (matches(column.typeName().toUpperCase(), "DECFLOAT")){
+                    return SchemaBuilder.float64();
+                }
             default:
                 return super.schemaBuilder(column);
         }
@@ -64,6 +68,10 @@ public class Db2ValueConverters extends JdbcValueConverters {
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return (data) -> convertSmallInt(column, fieldDefn, data);
+            case Types.OTHER:
+                if (matches(column.typeName().toUpperCase(), "DECFLOAT")){
+                    return (data) -> super.convertDouble(column, fieldDefn, data);
+                }
             default:
                 return super.converter(column, fieldDefn);
         }
@@ -82,4 +90,18 @@ public class Db2ValueConverters extends JdbcValueConverters {
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
 
+    /**
+     * Determine if the uppercase form of a column's type exactly matches or begins with the specified prefix.
+     * Note that this logic works when the column's {@link Column#typeName() type} contains the type name followed by parentheses.
+     *
+     * @param upperCaseTypeName the upper case form of the column's {@link Column#typeName() type name}
+     * @param upperCaseMatch the upper case form of the expected type or prefix of the type; may not be null
+     * @return {@code true} if the type matches the specified type, or {@code false} otherwise
+     */
+    protected static boolean matches(String upperCaseTypeName, String upperCaseMatch) {
+        if (upperCaseTypeName == null) {
+            return false;
+        }
+        return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
+    }
 }

@@ -125,8 +125,9 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractConnectorTest {
         }
 
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
-                // todo: DECFLOAT is currently not supported.
-                // new ColumnDefinition("val_decfloat", "decfloat", "3.14", "6.28", 3.14, 6.28, AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_decfloat", "decfloat",
+                    "3.14", "6.28", 3.14d,
+                    6.28d, AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_decimal", "decimal(5,2)",
                         "3.14", "6.28",
                         BigDecimal.valueOf(3.14), BigDecimal.valueOf(6.28),

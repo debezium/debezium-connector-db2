@@ -104,6 +104,8 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
         result.put(Types.DECIMAL, nullableDefaultValueMapper());
         result.put(Types.DOUBLE, nullableDefaultValueMapper((c, v) -> Double.parseDouble(v)));
         result.put(Types.REAL, nullableDefaultValueMapper((c, v) -> Float.parseFloat(v)));
+        // decfloat type
+        result.put(Types.OTHER, nullableDefaultValueMapper(decfloatDefaultValueMapper()));
 
         // Date and time
         result.put(Types.DATE, nullableDefaultValueMapper(castTemporalFunctionCall(connection, Types.DATE)));
@@ -209,5 +211,14 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
             return value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    public static DefaultValueMapper decfloatDefaultValueMapper() {
+        return (column, value) -> {
+            if (Db2ValueConverters.matches(column.typeName().toUpperCase(), "DECFLOAT")){
+                return Double.parseDouble(value);
+            }
+            return nullableDefaultValueMapper(null);
+        };
     }
 }
