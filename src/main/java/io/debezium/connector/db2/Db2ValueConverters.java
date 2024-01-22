@@ -53,7 +53,7 @@ public class Db2ValueConverters extends JdbcValueConverters {
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return SchemaBuilder.int16();
             case Types.OTHER:
-                if (matches(column.typeName().toUpperCase(), "DECFLOAT")){
+                if (matches(column.typeName().toUpperCase(), "DECFLOAT")) {
                     return SchemaBuilder.float64();
                 }
             default:
@@ -69,7 +69,7 @@ public class Db2ValueConverters extends JdbcValueConverters {
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return (data) -> convertSmallInt(column, fieldDefn, data);
             case Types.OTHER:
-                if (matches(column.typeName().toUpperCase(), "DECFLOAT")){
+                if (matches(column.typeName().toUpperCase(), "DECFLOAT")) {
                     return (data) -> super.convertDouble(column, fieldDefn, data);
                 }
             default:
