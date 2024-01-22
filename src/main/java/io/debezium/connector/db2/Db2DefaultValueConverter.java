@@ -215,7 +215,7 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
 
     public static DefaultValueMapper decfloatDefaultValueMapper() {
         return (column, value) -> {
-            if (Db2ValueConverters.matches(column.typeName().toUpperCase(), "DECFLOAT")){
+            if (Db2ValueConverters.matches(column.typeName().toUpperCase(), "DECFLOAT")) {
                 return Double.parseDouble(value);
             }
             return nullableDefaultValueMapper(null);
