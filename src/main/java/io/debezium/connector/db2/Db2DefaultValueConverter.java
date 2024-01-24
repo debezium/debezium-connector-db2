@@ -48,10 +48,17 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
     public Optional<Object> parseDefaultValue(Column column, String defaultValue) {
         LOGGER.info("Parsing default value for column '{}' with expression '{}'", column.name(), defaultValue);
         final int dataType = column.jdbcType();
-        final DefaultValueMapper mapper = defaultValueMappers.get(dataType);
+        DefaultValueMapper mapper = defaultValueMappers.get(dataType);
         if (mapper == null) {
-            LOGGER.warn("Mapper for type '{}' not found.", dataType);
-            return Optional.empty();
+            if (dataType == Types.OTHER) {
+                if (Db2ValueConverters.matches(column.typeName().toUpperCase(), "DECFLOAT")) {
+                    mapper = nullableDefaultValueMapper();
+                }
+            }
+            if (mapper == null) {
+                LOGGER.warn("Mapper for type '{}' not found.", dataType);
+                return Optional.empty();
+            }
         }
 
         try {
@@ -104,8 +111,6 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
         result.put(Types.DECIMAL, nullableDefaultValueMapper());
         result.put(Types.DOUBLE, nullableDefaultValueMapper((c, v) -> Double.parseDouble(v)));
         result.put(Types.REAL, nullableDefaultValueMapper((c, v) -> Float.parseFloat(v)));
-        // decfloat type
-        result.put(Types.OTHER, nullableDefaultValueMapper(decfloatDefaultValueMapper()));
 
         // Date and time
         result.put(Types.DATE, nullableDefaultValueMapper(castTemporalFunctionCall(connection, Types.DATE)));
@@ -211,14 +216,5 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
             return value.substring(1, value.length() - 1);
         }
         return value;
-    }
-
-    public static DefaultValueMapper decfloatDefaultValueMapper() {
-        return (column, value) -> {
-            if (Db2ValueConverters.matches(column.typeName().toUpperCase(), "DECFLOAT")) {
-                return Double.parseDouble(value);
-            }
-            return nullableDefaultValueMapper(null);
-        };
     }
 }

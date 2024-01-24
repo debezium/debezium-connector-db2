@@ -5,13 +5,17 @@
  */
 package io.debezium.connector.db2;
 
+import java.math.BigDecimal;
 import java.sql.Types;
 import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
@@ -54,7 +58,7 @@ public class Db2ValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.int16();
             case Types.OTHER:
                 if (matches(column.typeName().toUpperCase(), "DECFLOAT")) {
-                    return SchemaBuilder.float64();
+                    return decfloatSchema(column);
                 }
             default:
                 return super.schemaBuilder(column);
@@ -70,11 +74,45 @@ public class Db2ValueConverters extends JdbcValueConverters {
                 return (data) -> convertSmallInt(column, fieldDefn, data);
             case Types.OTHER:
                 if (matches(column.typeName().toUpperCase(), "DECFLOAT")) {
-                    return (data) -> super.convertDouble(column, fieldDefn, data);
+                    return (data) -> convertDecfloat(column, fieldDefn, data, decimalMode);
                 }
             default:
                 return super.converter(column, fieldDefn);
         }
+    }
+
+    protected Object convertDecfloat(Column column, Field fieldDefn, Object data, DecimalMode mode) {
+        SpecialValueDecimal value;
+        BigDecimal newDecimal;
+
+        if (data instanceof SpecialValueDecimal) {
+            value = (SpecialValueDecimal) data;
+
+            if (value.getDecimalValue().isEmpty()) {
+                return SpecialValueDecimal.fromLogical(value, mode, column.name());
+            }
+        }
+        else {
+            final Object o = toBigDecimal(column, fieldDefn, data);
+
+            if (!(o instanceof BigDecimal)) {
+                return o;
+            }
+            value = new SpecialValueDecimal((BigDecimal) o);
+        }
+
+        newDecimal = withScaleAdjustedIfNeeded(column, value.getDecimalValue().get());
+
+        if (mode == DecimalMode.PRECISE) {
+            newDecimal = newDecimal.stripTrailingZeros();
+            if (newDecimal.scale() < 0) {
+                newDecimal = newDecimal.setScale(0);
+            }
+
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal(newDecimal));
+        }
+
+        return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
     }
 
     /**
@@ -104,4 +142,12 @@ public class Db2ValueConverters extends JdbcValueConverters {
         }
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
     }
+
+    private SchemaBuilder decfloatSchema(Column column) {
+        if (decimalMode == DecimalMode.PRECISE) {
+            return VariableScaleDecimal.builder();
+        }
+        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(0));
+    }
+
 }
