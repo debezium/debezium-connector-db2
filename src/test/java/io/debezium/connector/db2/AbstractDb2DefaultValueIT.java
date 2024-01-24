@@ -125,9 +125,11 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractConnectorTest {
         }
 
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                // DECFLOAT is variable scale precise type and Kafka does not support STRUCT
+                // as default value so it is set to null
                 new ColumnDefinition("val_decfloat", "decfloat",
-                        "3.14", "6.28", 3.14d,
-                        6.28d, AssertionType.FIELD_DEFAULT_EQUAL),
+                        "3.14", "6.28", null,
+                        null, AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_decimal", "decimal(5,2)",
                         "3.14", "6.28",
                         BigDecimal.valueOf(3.14), BigDecimal.valueOf(6.28),
