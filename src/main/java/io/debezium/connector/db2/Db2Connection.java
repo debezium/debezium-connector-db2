@@ -417,6 +417,13 @@ public class Db2Connection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "The null value is higher than all other values"
+        // https://www.ibm.com/docs/en/db2/11.5?topic=subselect-order-by-clause
+        return Optional.of(true);
+    }
+
+    @Override
     public String quotedTableIdString(TableId tableId) {
         StringBuilder quoted = new StringBuilder();
         if (tableId.schema() != null && !tableId.schema().isEmpty()) {
