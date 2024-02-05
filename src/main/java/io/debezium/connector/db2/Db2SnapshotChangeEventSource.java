@@ -31,6 +31,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2Partition, Db2OffsetContext> {
@@ -43,8 +44,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     public Db2SnapshotChangeEventSource(Db2ConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory,
                                         Db2DatabaseSchema schema, EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock,
                                         SnapshotProgressListener<Db2Partition> snapshotProgressListener,
-                                        NotificationService<Db2Partition, Db2OffsetContext> notificationService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+                                        NotificationService<Db2Partition, Db2OffsetContext> notificationService, SnapshotterService snapshotterService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
     }
