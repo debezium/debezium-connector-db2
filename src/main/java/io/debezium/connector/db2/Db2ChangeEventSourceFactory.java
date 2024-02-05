@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -32,10 +33,11 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
     private final EventDispatcher<Db2Partition, TableId> dispatcher;
     private final Clock clock;
     private final Db2DatabaseSchema schema;
+    private final SnapshotterService snapshotterService;
 
     public Db2ChangeEventSourceFactory(Db2ConnectorConfig configuration, Db2Connection metadataConnection,
                                        MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory, ErrorHandler errorHandler,
-                                       EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, Db2DatabaseSchema schema) {
+                                       EventDispatcher<Db2Partition, TableId> dispatcher, Clock clock, Db2DatabaseSchema schema, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.metadataConnection = metadataConnection;
         this.connectionFactory = connectionFactory;
@@ -43,12 +45,14 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
     public SnapshotChangeEventSource<Db2Partition, Db2OffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<Db2Partition> snapshotProgressListener,
                                                                                                   NotificationService<Db2Partition, Db2OffsetContext> notificationService) {
-        return new Db2SnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+        return new Db2SnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
+                snapshotterService);
     }
 
     @Override

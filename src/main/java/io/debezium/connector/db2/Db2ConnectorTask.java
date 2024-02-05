@@ -35,6 +35,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
@@ -98,6 +99,8 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
         if (previousOffset != null) {
             schema.recover(partition, previousOffset);
         }
@@ -143,12 +146,13 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 errorHandler,
                 Db2Connector.class,
                 connectorConfig,
-                new Db2ChangeEventSourceFactory(connectorConfig, metadataConnection, connectionFactory, errorHandler, dispatcher, clock, schema),
+                new Db2ChangeEventSourceFactory(connectorConfig, metadataConnection, connectionFactory, errorHandler, dispatcher, clock, schema, snapshotterService),
                 new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
                 schema,
                 signalProcessor,
-                notificationService);
+                notificationService,
+                snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
