@@ -59,6 +59,7 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
     @Override
     protected Configuration.Builder getConfigurationBuilder() {
         return TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "DB2INST1\\.DBZ4321")
                 .with(Db2ConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
                 .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
