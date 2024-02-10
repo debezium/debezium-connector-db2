@@ -58,6 +58,8 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
+        TestHelper.dropAllTables();
+
         connection = TestHelper.testConnection();
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
         connection.execute(
