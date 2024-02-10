@@ -272,4 +272,19 @@ public class TestHelper {
 
         }
     }
+
+    public static void dropAllTables() throws SQLException {
+        try (Db2Connection connection = testConnection()) {
+            LOGGER.info("Attempting to drop all tables (if exists)");
+            connection.query("SELECT TABNAME FROM syscat.tables WHERE TABSCHEMA = 'DB2INST1'", rs -> {
+                while (rs.next()) {
+                    final String tableName = rs.getString(1);
+                    LOGGER.info("Disabling CDC for table {}", tableName);
+                    disableTableCdc(connection, "DB2INST1", tableName);
+                    LOGGER.warn("Dropping table {}", tableName);
+                    connection.execute("DROP TABLE IF EXISTS " + tableName);
+                }
+            });
+        }
+    }
 }
