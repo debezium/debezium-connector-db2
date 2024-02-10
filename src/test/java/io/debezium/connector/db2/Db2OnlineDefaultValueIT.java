@@ -5,8 +5,15 @@
  */
 package io.debezium.connector.db2;
 
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestRule;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
+import io.debezium.doc.FixFor;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.relational.TableId;
 
 /**
@@ -15,6 +22,17 @@ import io.debezium.relational.TableId;
  * @author Chris Cranford
  */
 public class Db2OnlineDefaultValueIT extends AbstractDb2DefaultValueIT {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
+
+    @Test
+    @FixFor("DBZ-4990")
+    @Flaky("DBZ-6048")
+    public void shouldHandleDateTimeDefaultTypes() throws Exception {
+        super.shouldHandleDateTimeDefaultTypes();
+    }
+
     @Override
     protected void performSchemaChange(Configuration config, Db2Connection connection, String alterStatement) throws Exception {
         final TableId tableId = TableId.parse("DB2INST1.DV_TEST");
