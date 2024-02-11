@@ -27,6 +27,13 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
     @Before
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
+
+        TestHelper.disableDbCdc(connection);
+        TestHelper.disableTableCdc(connection, "dbz4321");
+        connection.execute("DROP TABLE IF EXISTS dbz4321");
+
+        connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
+
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
         super.beforeEach();

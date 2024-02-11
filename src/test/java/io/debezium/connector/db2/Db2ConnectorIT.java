@@ -58,9 +58,15 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllTables();
+        // CHECKSTYLE:OFF
+        System.out.println("failFlakyTests: " + System.getProperty(Flaky.FAIL_FLAKY_TESTS_PROPERTY));
+        // CHECKSTYLE:ON
 
         connection = TestHelper.testConnection();
+
+        TestHelper.disableDbCdc(connection);
+        TestHelper.dropAllTables();
+
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
         connection.execute(
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",

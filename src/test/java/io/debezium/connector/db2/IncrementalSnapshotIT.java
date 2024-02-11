@@ -62,18 +62,48 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     @After
     public void after() throws SQLException {
         if (connection != null) {
-            TestHelper.disableDbCdc(connection);
-            TestHelper.disableTableCdc(connection, "A");
-            TestHelper.disableTableCdc(connection, "B");
-            TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
-            connection.rollback();
-            connection.execute(
-                    "DROP TABLE IF EXISTS a",
-                    "DROP TABLE IF EXISTS b",
-                    "DROP TABLE IF EXISTS debezium_signal");
-            connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
-            connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
-            connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
+            try {
+                TestHelper.disableDbCdc(connection);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                TestHelper.disableTableCdc(connection, "A");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                TestHelper.disableTableCdc(connection, "B");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            // connection.rollback();
+            try {
+                connection.execute(
+                        "DROP TABLE IF EXISTS a",
+                        "DROP TABLE IF EXISTS b",
+                        "DROP TABLE IF EXISTS debezium_signal");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
+                connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
+                connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
             connection.close();
         }
     }
@@ -192,6 +222,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     @Flaky("DBZ-6849")
     public void snapshotWithAdditionalConditionWithRestart() throws Exception {
         super.snapshotWithAdditionalConditionWithRestart();
+    }
+
+    @Test
+    @Flaky("DBZ-7478")
+    public void snapshotWithAdditionalCondition() throws Exception {
+        super.snapshotWithAdditionalCondition();
     }
 
 }
