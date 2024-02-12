@@ -125,6 +125,7 @@ public class TestHelper {
         Statement stmt = connection.connection().createStatement();
         boolean isNotrunning = true;
         int count = 0;
+        int retries = 0;
         while (isNotrunning) {
             ResultSet rs = stmt.executeQuery(STATUS_DB_CDC);
             while (rs.next()) {
@@ -134,6 +135,14 @@ public class TestHelper {
                 if (test.contains("is doing work")) {
                     isNotrunning = false;
                 }
+                else if (test.contains("ASN0510E")) {
+                    // Per https://www.ibm.com/docs/en/db2/11.5?topic=messages-asn0000-asn0999#asn0510e
+                    // The command was not executed and should be retried in this use case.
+                    LOGGER.debug("ASN0510E detected, command was not processed and requires retry.");
+                    connection.execute(ENABLE_DB_CDC);
+                    retries++;
+                    count = 0;
+                }
                 else {
                     try {
                         Thread.sleep(1000);
@@ -141,7 +150,10 @@ public class TestHelper {
                     catch (InterruptedException e) {
                     }
                 }
-                if (count++ > 60) {
+                if (retries > 5) {
+                    throw new SQLException("Maximum ASNCAP server start requests exceeded");
+                }
+                else if (count++ > 60) {
                     throw new SQLException("ASNCAP server did not start.");
                 }
             }
