@@ -230,4 +230,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         super.snapshotWithAdditionalCondition();
     }
 
+    @Test
+    @Flaky("DBZ-XXXX")
+    public void snapshotOnlyWithRestart() throws Exception {
+        super.snapshotOnlyWithRestart();
+    }
+
 }
