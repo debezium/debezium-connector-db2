@@ -34,15 +34,19 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
 
     @After
     public void afterEach() throws Exception {
-        super.afterEach();
-        if (connection != null) {
-            TestHelper.disableDbCdc(connection);
-            TestHelper.disableTableCdc(connection, "DBZ4321");
-            connection.execute("DROP TABLE dbz4321");
-            connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
-            connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
-            connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
-            connection.close();
+        try {
+            super.afterEach();
+        }
+        finally {
+            if (connection != null) {
+                TestHelper.disableDbCdc(connection);
+                TestHelper.disableTableCdc(connection, "DBZ4321");
+                connection.execute("DROP TABLE dbz4321");
+                connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
+                connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
+                connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
+                connection.close();
+            }
         }
     }
 
