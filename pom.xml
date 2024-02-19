@@ -44,6 +44,9 @@
 
         <!-- Flaky Test Support -->
         <fail.flaky.tests>true</fail.flaky.tests>
+
+        <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
+        <runOrder>alphabetical</runOrder>
     </properties>
 
     <repositories>

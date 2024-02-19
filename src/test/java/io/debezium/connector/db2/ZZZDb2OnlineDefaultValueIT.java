@@ -19,9 +19,12 @@ import io.debezium.relational.TableId;
 /**
  * Default value handling integration tests using online schema evolution processes.
  *
+ * NOTE:
+ * Class intentionally named with "ZZZ" prefix to run last.
+ *
  * @author Chris Cranford
  */
-public class Db2OnlineDefaultValueIT extends AbstractDb2DefaultValueIT {
+public class ZZZDb2OnlineDefaultValueIT extends AbstractDb2DefaultValueIT {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
