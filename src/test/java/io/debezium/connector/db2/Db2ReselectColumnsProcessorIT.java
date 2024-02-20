@@ -39,9 +39,19 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
         }
         finally {
             if (connection != null) {
-                TestHelper.disableDbCdc(connection);
-                TestHelper.disableTableCdc(connection, "DBZ4321");
-                connection.execute("DROP TABLE dbz4321");
+                try {
+                    TestHelper.disableDbCdc(connection);
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+                try {
+                    TestHelper.disableTableCdc(connection, "DBZ4321");
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+                connection.execute("DROP TABLE dbz4321 IF EXISTS");
                 connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
                 connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
                 connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
@@ -89,9 +99,6 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
         connection.execute("DROP TABLE DBZ4321 IF EXISTS");
         TestHelper.enableDbCdc(connection);
         connection.execute("CREATE TABLE DBZ4321 (id int not null, data varchar(50), data2 int, primary key(id))");
-        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
-        TestHelper.refreshAndWait(connection);
-        TestHelper.enableTableCdc(connection, "DBZ4321");
     }
 
     @Override
@@ -118,4 +125,10 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
         return fieldName.toUpperCase();
     }
 
+    @Override
+    protected void enableTableForCdc() throws Exception {
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+        TestHelper.enableTableCdc(connection, "DBZ4321");
+    }
 }
