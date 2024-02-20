@@ -194,4 +194,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         super.snapshotWithAdditionalConditionWithRestart();
     }
 
+    @Test
+    @Override
+    @Flaky("DBZ-7478")
+    public void snapshotWithAdditionalCondition() throws Exception {
+        super.snapshotWithAdditionalCondition();
+    }
+
 }
