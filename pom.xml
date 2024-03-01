@@ -42,9 +42,6 @@
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
 
-        <!-- Flaky Test Support -->
-        <fail.flaky.tests>true</fail.flaky.tests>
-
         <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
         <runOrder>alphabetical</runOrder>
     </properties>
@@ -342,7 +339,7 @@
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
-                    <systemPropertyVariables>
+                    <systemPropertyVariables combine.children="append">
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
                         <database.dbname>${db2.dbname}</database.dbname>
@@ -350,7 +347,6 @@
                         <database.user>${db2.user}</database.user>
                         <database.password>${db2.password}</database.password>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                        <failFlakyTests>${fail.flaky.tests}</failFlakyTests>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
