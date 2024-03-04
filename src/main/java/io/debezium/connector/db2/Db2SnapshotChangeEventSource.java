@@ -32,6 +32,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 
 public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2Partition, Db2OffsetContext> {
@@ -52,31 +53,37 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     @Override
     public SnapshottingTask getSnapshottingTask(Db2Partition partition, Db2OffsetContext previousOffset) {
-        boolean snapshotSchema = true;
-        boolean snapshotData;
+
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotSchema = false;
-            snapshotData = false;
-        }
-        else {
-            LOGGER.info("No previous offset has been found");
-            if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
-            }
-            else {
-                LOGGER.info("According to the connector configuration only schema will be snapshotted");
-            }
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (offsetExists) {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+        }
+
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
+
+        if (shouldSnapshotData && shouldSnapshotSchema) {
+            LOGGER.info("According to the connector configuration both schema and data will be snapshot.");
+        }
+        else if (shouldSnapshotSchema) {
+            LOGGER.info("According to the connector configuration only schema will be snapshot.");
+        }
+
+        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
+                dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable,
+                false);
     }
 
     @Override
@@ -117,16 +124,26 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    LOGGER.info("Locking table {}", tableId);
-                    String query = String.format("SELECT * FROM %s.%s WHERE 0=1 WITH CS", Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
-                            Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
-                    statement.executeQuery(query).close();
+                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(connectorConfig.snapshotLockTimeout(),
+                            Set.of(quoteTableName(tableId)));
+
+                    if (lockingStatement.isPresent()) {
+                        LOGGER.info("Locking table {}", tableId);
+                        statement.executeQuery(lockingStatement.get()).close();
+                    }
                 }
             }
         }
         else {
             throw new IllegalStateException("Unknown locking mode specified.");
         }
+    }
+
+    private String quoteTableName(TableId tableId) {
+
+        return String.format("%s.%s",
+                Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
+                Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
     }
 
     @Override
@@ -141,6 +158,15 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> ctx, Db2OffsetContext previousOffset) throws Exception {
+
+        // Support the existence of the case when the previous offset.
+        // e.g., schema_only_recovery snapshot mode
+        if (connectorConfig.getSnapshotMode() != Db2ConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
+            ctx.offset = previousOffset;
+            tryStartingSnapshot(ctx);
+            return;
+        }
+
         ctx.offset = new Db2OffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
@@ -213,10 +239,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext, TableId tableId, List<String> columns) {
-        String snapshotSelectColumns = columns.stream()
-                .collect(Collectors.joining(", "));
-        return Optional.of(String.format("SELECT %s FROM %s.%s", snapshotSelectColumns, Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
-                Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table())));
+
+        return snapshotterService.getSnapshotQuery().snapshotQuery(quoteTableName(tableId), columns);
     }
 
     /**

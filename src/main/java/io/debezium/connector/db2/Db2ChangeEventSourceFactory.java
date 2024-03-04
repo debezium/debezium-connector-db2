@@ -64,7 +64,8 @@ public class Db2ChangeEventSourceFactory implements ChangeEventSourceFactory<Db2
                 dispatcher,
                 errorHandler,
                 clock,
-                schema);
+                schema,
+                snapshotterService);
     }
 
     @Override

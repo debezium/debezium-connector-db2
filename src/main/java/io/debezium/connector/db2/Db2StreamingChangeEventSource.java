@@ -32,6 +32,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -86,10 +87,12 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Db2ConnectorConfig connectorConfig;
     private Db2OffsetContext effectiveOffsetContext;
 
+    private final SnapshotterService snapshotterService;
+
     public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
                                          Db2Connection metadataConnection,
                                          EventDispatcher<Db2Partition, TableId> dispatcher, ErrorHandler errorHandler,
-                                         Clock clock, Db2DatabaseSchema schema) {
+                                         Clock clock, Db2DatabaseSchema schema, SnapshotterService snapshotterService) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -98,6 +101,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         this.clock = clock;
         this.schema = schema;
         this.pollInterval = connectorConfig.getPollInterval();
+        this.snapshotterService = snapshotterService;
     }
 
     public void init(Db2OffsetContext offsetContext) {
@@ -110,7 +114,8 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     @Override
     public void execute(ChangeEventSourceContext context, Db2Partition partition, Db2OffsetContext offsetContext)
             throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) {
             LOGGER.info("Streaming is not enabled in current configuration");
             return;
         }
@@ -134,13 +139,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!currentMaxLsn.isAvailable()) {
-                    LOGGER.warn("No maximum LSN recorded in the database; please ensure that the DB2 Agent is running");
+                    LOGGER.warn("No maximum LSN in the database; please ensure that the DB2 Agent is running");
                     metronome.pause();
                     continue;
                 }
                 // There is no change in the database
                 if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn()) && shouldIncreaseFromLsn) {
-                    LOGGER.debug("No change in the database");
+                    LOGGER.warn("No change in the database");
                     metronome.pause();
                     continue;
                 }

@@ -1,0 +1,2 @@
+io.debezium.connector.db2.snapshot.lock.NoSnapshotLock
+io.debezium.connector.db2.snapshot.lock.ExclusiveSnapshotLock
