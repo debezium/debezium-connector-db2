@@ -21,6 +21,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.db2.snapshot.Db2SnapshotLockProvider;
+import io.debezium.connector.db2.snapshot.Db2SnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -35,6 +37,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -86,8 +89,6 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
         Offsets<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),
                 new Db2OffsetContext.Loader(connectorConfig));
-        final Db2Partition partition = previousOffsets.getTheOnlyPartition();
-        final Db2OffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
@@ -95,15 +96,15 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        if (previousOffset != null) {
-            schema.recover(partition, previousOffset);
-        }
+        validateAndLoadSchemaHistory(connectorConfig, metadataConnection, previousOffsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new Db2TaskContext(connectorConfig, schema);
 
@@ -227,5 +228,13 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                     .build();
         }
         return config;
+    }
+
+    @Override
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+
+        super.registerServiceProviders(serviceRegistry);
+        serviceRegistry.registerServiceProvider(new Db2SnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new Db2SnapshotterServiceProvider());
     }
 }

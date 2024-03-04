@@ -27,9 +27,12 @@ import org.slf4j.LoggerFactory;
 
 import com.ibm.db2.jcc.DB2Driver;
 
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -113,6 +116,7 @@ public class Db2Connection extends JdbcConnection {
      */
     public Db2Connection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        this.logPositionValidator = this::validateLogPosition;
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
     }
@@ -560,6 +564,31 @@ public class Db2Connection extends JdbcConnection {
     @Override
     public TableId createTableId(String databaseName, String schemaName, String tableName) {
         return new TableId(null, schemaName, tableName);
+    }
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+
+        final Lsn storedLsn = ((Db2OffsetContext) offset).getChangePosition().getCommitLsn();
+
+        String oldestFirstChangeQuery = String.format("SELECT min(RESTART_SEQ) FROM %s.IBMSNAP_CAPMON;", CDC_SCHEMA);
+
+        try {
+            final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
+
+            if (oldestScn == null) {
+                return false;
+            }
+
+            LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+            return storedLsn == null || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
+        return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
     }
 
     private PreparedStatement createPreparedStatement(String query) {
