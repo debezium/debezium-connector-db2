@@ -40,7 +40,7 @@ public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
-    public static final int WAIT_FOR_CDC = 3 * 1000;
+    public static final int WAIT_FOR_CDC = 3 * 5000;
 
     /**
      * Key for schema parameter used to store a source column's type name.

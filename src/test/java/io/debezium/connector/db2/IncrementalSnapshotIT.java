@@ -124,6 +124,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     }
 
     @Override
+    protected String noPKTopicName() {
+        return "testdb.DB2INST1.A42";
+    }
+
+    @Override
     protected String tableName() {
         return "DB2INST1.A";
     }
@@ -134,12 +139,22 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     }
 
     @Override
+    protected String noPKTableName() {
+        return "DB2INST1.A42";
+    }
+
+    @Override
     protected String signalTableName() {
         return "DEBEZIUM_SIGNAL";
     }
 
     protected String getSignalTypeFieldName() {
         return "TYPE";
+    }
+
+    @Override
+    protected String returnedIdentifierName(String queriedID) {
+        return queriedID.toUpperCase();
     }
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
