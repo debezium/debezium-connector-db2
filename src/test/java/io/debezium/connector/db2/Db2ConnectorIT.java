@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.db2.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -27,6 +29,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
@@ -41,8 +44,11 @@ import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Testing;
+
+import junit.framework.TestCase;
 
 /**
  * Integration test for the Debezium DB2 connector.
@@ -902,6 +908,186 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "db2", "testdb", false);
         }
+    }
+
+    @Test
+    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "DB2INST1.ALWAYS_SNAPSHOT")
+                    .with(Db2ConnectorConfig.SNAPSHOT_MODE_TABLES, "DB2INST1.ALWAYS_SNAPSHOT")
+                    .with(Db2ConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                    .build();
+
+            connection.execute("CREATE TABLE always_snapshot ("
+                    + " id INT PRIMARY KEY NOT NULL,"
+                    + " data VARCHAR(50) NOT NULL);");
+            connection.execute("INSERT INTO always_snapshot VALUES (1,'Test1');");
+            connection.execute("INSERT INTO always_snapshot VALUES (2,'Test2');");
+
+            TestHelper.enableTableCdc(connection, "ALWAYS_SNAPSHOT");
+
+            start(Db2Connector.class, config);
+
+            TestHelper.waitForCDC();
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.ALWAYS_SNAPSHOT")).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            TestCase.assertEquals(1, struct.get("id"));
+            TestCase.assertEquals("Test1", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            TestCase.assertEquals(2, struct.get("id"));
+            TestCase.assertEquals("Test2", struct.get("data"));
+
+            stopConnector();
+
+            connection.execute("DELETE FROM ALWAYS_SNAPSHOT WHERE id=1;");
+            connection.execute("INSERT INTO ALWAYS_SNAPSHOT VALUES (3,'Test3');");
+
+            start(Db2Connector.class, config);
+            TestHelper.waitForCDC();
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.ALWAYS_SNAPSHOT")).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            TestCase.assertEquals(2, struct.get("id"));
+            TestCase.assertEquals("Test2", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            TestCase.assertEquals(3, struct.get("id"));
+            TestCase.assertEquals("Test3", struct.get("data"));
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            connection.execute("DROP TABLE ALWAYS_SNAPSHOT");
+        }
+    }
+
+    @Test
+    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+
+        Configuration.Builder builder = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, Db2ConnectorConfig.SnapshotMode.INITIAL)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "DB2INST1.TABLEA")
+                .with(Db2ConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
+
+        Configuration config = builder.build();
+        // Start the connector ...
+        start(Db2Connector.class, config);
+
+        TestHelper.waitForSnapshotToBeCompleted();
+        // Poll for records ...
+        // Testing.Print.enable();
+        int recordCount = 1;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+        stopConnector();
+
+        builder.with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
+        config = builder.build();
+        start(Db2Connector.class, config);
+
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        connection.execute("INSERT INTO tablea VALUES (100,'100')");
+        connection.execute("INSERT INTO tablea VALUES (200,'200')");
+
+        TestHelper.refreshAndWait(connection);
+
+        recordCount = 2;
+        sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+    }
+
+    @Test
+    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+
+        final String pkField = "ID";
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, Db2ConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "DB2INST1.TABLEA,DB2INST1.TABLEB")
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        connection.execute("INSERT INTO tableb VALUES (1, '1');");
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEA");
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEB");
+
+        if (s2recs != null) { // Sometimes the record is processed by the stream so filtering it out
+            s2recs = s2recs.stream().filter(r -> "r".equals(((Struct) r.value()).get("op")))
+                    .collect(Collectors.toList());
+        }
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs).isNull();
+
+        SourceRecord record = s1recs.get(0);
+        VerifyRecord.isValidRead(record, pkField, 1);
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        connection.execute("INSERT INTO tablea VALUES (2, '1');");
+        connection.execute("INSERT INTO tableb VALUES (2, '1');");
+
+        TestHelper.refreshAndWait(connection);
+
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEA");
+        s2recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        record = s1recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        record = s2recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        stopConnector();
+
+        config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, Db2ConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+        actualRecords = consumeRecordsByTopic(4);
+
+        s1recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEA");
+        s2recs = actualRecords.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
+    }
+
+    private void purgeDatabaseLogs() throws SQLException {
+        connection.execute("ALTER DATABASE testDB1 SET RECOVERY SIMPLE");
+        connection.execute("DBCC SHRINKFILE (testDB1, 1)");
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
