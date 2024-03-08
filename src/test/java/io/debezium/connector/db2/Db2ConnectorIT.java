@@ -966,6 +966,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
             e.printStackTrace();
         }
         finally {
+            TestHelper.disableTableCdc(connection, "ALWAYS_SNAPSHOT");
             connection.execute("DROP TABLE ALWAYS_SNAPSHOT");
         }
     }
@@ -1083,11 +1084,6 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
         VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
         VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
-    }
-
-    private void purgeDatabaseLogs() throws SQLException {
-        connection.execute("ALTER DATABASE testDB1 SET RECOVERY SIMPLE");
-        connection.execute("DBCC SHRINKFILE (testDB1, 1)");
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
