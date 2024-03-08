@@ -157,6 +157,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         return queriedID.toUpperCase();
     }
 
+    @Override
     protected void sendAdHocSnapshotSignal() throws SQLException {
         connection.execute(
                 String.format(
@@ -168,7 +169,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Db2ConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST1.DEBEZIUM_SIGNAL")
                 .with(Db2ConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DB2INST1.A42:pk1,pk2,pk3,pk4");
@@ -203,7 +204,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
 
     @Override
     protected int defaultIncrementalSnapshotChunkSize() {
-        return 250;
+        return 100;
     }
 
     @Override
