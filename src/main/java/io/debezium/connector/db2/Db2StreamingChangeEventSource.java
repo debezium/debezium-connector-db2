@@ -145,7 +145,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 }
                 // There is no change in the database
                 if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn()) && shouldIncreaseFromLsn) {
-                    LOGGER.warn("No change in the database");
+                    LOGGER.debug("No change in the database");
                     metronome.pause();
                     continue;
                 }
