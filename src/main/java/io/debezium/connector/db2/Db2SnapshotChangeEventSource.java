@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,7 +31,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
-import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 
 public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<Db2Partition, Db2OffsetContext> {
@@ -90,7 +88,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
                     }
 
                     Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(connectorConfig.snapshotLockTimeout(),
-                            Set.of(quoteTableName(tableId)));
+                            quoteTableName(tableId));
 
                     if (lockingStatement.isPresent()) {
                         LOGGER.info("Locking table {}", tableId);
