@@ -8,7 +8,6 @@ package io.debezium.connector.db2.snapshot.lock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import io.debezium.connector.db2.Db2ConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -26,9 +25,7 @@ public class ExclusiveSnapshotLock implements SnapshotLock {
     }
 
     @Override
-    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
-
-        String tableId = tableIds.iterator().next(); // For Db2 we expect just one table at time.
+    public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
 
         return Optional.of("SELECT * FROM " + tableId + " WHERE 0=1 WITH CS");
     }
