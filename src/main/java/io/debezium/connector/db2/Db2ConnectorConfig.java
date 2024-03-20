@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -404,8 +405,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         return this.snapshotIsolationMode;
     }
 
-    public SnapshotLockingMode getSnapshotLockingMode() {
-        return this.snapshotLockingMode;
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     public SnapshotMode getSnapshotMode() {
