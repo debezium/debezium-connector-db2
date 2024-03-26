@@ -472,7 +472,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.tableb")
                 .build();
         connection.execute(
@@ -737,7 +737,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-775")
     public void shouldConsumeEventsWithMaskedAndTruncatedColumns() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("column.mask.with.12.chars", "DB2INST1.MASKED_HASHED_COLUMN_TABLE.NAME")
                 .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K", "DB2INST1.MASKED_HASHED_COLUMN_TABLE.NAME2,DB2INST1.MASKED_HASHED_COLUMN_TABLE.NAME3")
                 .with("column.truncate.to.4.chars", "DB2INST1.TRUNCATED_COLUMN_TABLE.NAME")
@@ -792,7 +792,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-775")
     public void shouldRewriteIdentityKey() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Db2ConnectorConfig.MSG_KEY_COLUMNS, "(.*).tablea:id,cola")
                 .build();
 
@@ -823,7 +823,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.DECIMAL,.+\\.REAL")
                 .build();
 
