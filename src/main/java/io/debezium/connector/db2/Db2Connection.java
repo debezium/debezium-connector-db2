@@ -116,7 +116,6 @@ public class Db2Connection extends JdbcConnection {
      */
     public Db2Connection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
-        this.logPositionValidator = this::validateLogPosition;
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
     }
