@@ -5,10 +5,14 @@
  */
 package io.debezium.connector.db2.converters;
 
+import java.util.Set;
+
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
-import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
+import io.debezium.data.Envelope;
+import io.debezium.util.Collect;
 
 /**
  * CloudEvents maker for records produced by the Db2 connector.
@@ -17,14 +21,27 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class Db2CloudEventsMaker extends CloudEventsMaker {
 
-    public Db2CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
-        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
+    static final String CHANGE_LSN_KEY = "change_lsn";
+    static final String COMMIT_LSN_KEY = "commit_lsn";
+
+    static final Set<String> DB2_SOURCE_FIELDS = Collect.unmodifiableSet(
+            CHANGE_LSN_KEY,
+            COMMIT_LSN_KEY);
+
+    public Db2CloudEventsMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
+                               String cloudEventsSchemaName) {
+        super(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
 
     @Override
     public String ceId() {
-        return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                + ";change_lsn:" + recordParser.getMetadata(Db2RecordParser.CHANGE_LSN_KEY)
-                + ";commit_lsn:" + recordParser.getMetadata(Db2RecordParser.COMMIT_LSN_KEY);
+        return "name:" + sourceField(AbstractSourceInfo.SERVER_NAME_KEY)
+                + ";change_lsn:" + sourceField(CHANGE_LSN_KEY)
+                + ";commit_lsn:" + sourceField(COMMIT_LSN_KEY);
+    }
+
+    @Override
+    public Set<String> connectorSpecificSourceFields() {
+        return DB2_SOURCE_FIELDS;
     }
 }
