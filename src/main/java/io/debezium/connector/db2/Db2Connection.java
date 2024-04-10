@@ -33,6 +33,7 @@ import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -565,7 +566,7 @@ public class Db2Connection extends JdbcConnection {
         return new TableId(null, schemaName, tableName);
     }
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
         final Lsn storedLsn = ((Db2OffsetContext) offset).getChangePosition().getCommitLsn();
 
