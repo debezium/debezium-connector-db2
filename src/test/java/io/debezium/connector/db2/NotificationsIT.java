@@ -7,6 +7,7 @@
 package io.debezium.connector.db2;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -22,8 +23,18 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
 
     @Before
     public void before() throws SQLException {
-
+        TestHelper.dropAllTables();
         connection = TestHelper.testConnection();
+
+        connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
+        connection.execute(
+                "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
+                "INSERT INTO tablea VALUES(1, 'a')");
+
+        TestHelper.enableTableCdc(connection, "TABLEA");
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -35,6 +46,11 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
 
+            TestHelper.disableTableCdc(connection, "TABLEA");
+            connection.execute("DROP TABLE tablea");
+            connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
+            connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
+            connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
             connection.close();
         }
     }
@@ -63,5 +79,9 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
     @Override
     protected String snapshotStatusResult() {
         return "COMPLETED";
+    }
+
+    protected List<String> collections() {
+        return List.of("DB2INST1.TABLEA");
     }
 }
