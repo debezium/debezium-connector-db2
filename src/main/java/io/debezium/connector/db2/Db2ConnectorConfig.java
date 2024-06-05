@@ -22,6 +22,9 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.db2.platform.Db2PlatformAdapter;
+import io.debezium.connector.db2.platform.LuwPlatform;
+import io.debezium.connector.db2.platform.ZOsPlatform;
 import io.debezium.document.Document;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.relational.ColumnFilterMode;
@@ -303,12 +306,32 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         /**
          * Linux, Unix, Windows
          */
-        LUW("LUW"),
+        LUW("LUW") {
+            @Override
+            public Db2PlatformAdapter createAdapter(Db2ConnectorConfig config) {
+                return new LuwPlatform(config);
+            }
+
+            @Override
+            public String platfromName() {
+                return "LUW";
+            }
+        },
 
         /**
          * z/OS
          */
-        Z("ZOS");
+        Z("ZOS") {
+            @Override
+            public Db2PlatformAdapter createAdapter(Db2ConnectorConfig config) {
+                return new ZOsPlatform(config);
+            }
+
+            @Override
+            public String platfromName() {
+                return "z/OS";
+            }
+        };
 
         private final String value;
 
@@ -320,6 +343,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         public String getValue() {
             return value;
         }
+
+        public abstract Db2PlatformAdapter createAdapter(Db2ConnectorConfig config);
+
+        public abstract String platfromName();
 
         /**
          * Determine if the supplied value is one of the predefined options.
