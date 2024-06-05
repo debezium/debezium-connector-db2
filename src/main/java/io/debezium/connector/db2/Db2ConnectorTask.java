@@ -69,6 +69,10 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
+        LOGGER.info("Using Db2 {} platfrom, CDC control schema is {}, schema with change tables is {}",
+                connectorConfig.getDb2Platform(), connectorConfig.getCdcControlSchema(),
+                connectorConfig.getCdcChangeTablesSchema());
+
         MainConnectionProvidingConnectionFactory<Db2Connection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
                 () -> new Db2Connection(connectorConfig));
         dataConnection = connectionFactory.mainConnection();
