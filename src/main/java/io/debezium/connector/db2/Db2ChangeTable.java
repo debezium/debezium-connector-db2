@@ -18,8 +18,6 @@ import io.debezium.relational.TableId;
  */
 public class Db2ChangeTable extends ChangeTable {
 
-    private final String CDC_SCHEMA;
-
     /**
      * A LSN from which the data in the change table are relevant
      */
@@ -40,7 +38,6 @@ public class Db2ChangeTable extends ChangeTable {
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
         this.db2CaptureInstance = Db2ObjectNameQuoter.quoteNameIfNecessary(captureInstance);
-        this.CDC_SCHEMA = tableCdcSchema;
     }
 
     public Db2ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, String tableCdcSchema) {
