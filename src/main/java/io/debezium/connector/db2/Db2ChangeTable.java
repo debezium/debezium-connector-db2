@@ -26,22 +26,21 @@ public class Db2ChangeTable extends ChangeTable {
     /**
      * A LSN to which the data in the change table are relevant
      */
-    private Lsn stopLsn;
+    private Lsn stopLsn = Lsn.NULL;
 
     /**
      * The table in the CDC schema that captures changes, suitably quoted for Db2
      */
     private final String db2CaptureInstance;
 
-    public Db2ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, String tableCdcSchema) {
+    public Db2ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, String tableCdcSchema) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance, tableCdcSchema), changeTableObjectId);
         this.startLsn = startLsn;
-        this.stopLsn = stopLsn;
         this.db2CaptureInstance = Db2ObjectNameQuoter.quoteNameIfNecessary(captureInstance);
     }
 
-    public Db2ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, String tableCdcSchema) {
-        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn, tableCdcSchema);
+    public Db2ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, String tableCdcSchema) {
+        this(null, captureInstance, changeTableObjectId, startLsn, tableCdcSchema);
     }
 
     public String getCaptureInstance() {

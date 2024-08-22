@@ -272,7 +272,6 @@ public class Db2Connection extends JdbcConnection {
                                 rs.getString(4),
                                 rs.getInt(9),
                                 Lsn.valueOf(rs.getBytes(5)),
-                                Lsn.valueOf(rs.getBytes(6)),
                                 connectorConfig.getCdcChangeTablesSchema()
 
                         ));
@@ -295,7 +294,6 @@ public class Db2Connection extends JdbcConnection {
                                 rs.getString(2),
                                 rs.getInt(1),
                                 Lsn.valueOf(rs.getBytes(3)),
-                                Lsn.valueOf(rs.getBytes(4)),
                                 connectorConfig.getCdcChangeTablesSchema()));
                     }
                     return changeTables;
