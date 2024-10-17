@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 echo "Compile ASN tool ..."
 cd /asncdctools/src
