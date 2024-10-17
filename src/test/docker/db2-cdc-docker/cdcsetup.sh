@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 if [ ! -f /asncdctools/src/asncdc.nlk ]; then
 rc=1
