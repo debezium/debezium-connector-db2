@@ -133,7 +133,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
         ctx.offset = new Db2OffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
-                false,
+                null,
                 false);
     }
 
