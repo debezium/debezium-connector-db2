@@ -108,7 +108,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
 
         this.effectiveOffsetContext = offsetContext != null
                 ? offsetContext
-                : new Db2OffsetContext(connectorConfig, TxLogPosition.NULL, false, false);
+                : new Db2OffsetContext(connectorConfig, TxLogPosition.NULL, null, false);
     }
 
     @Override

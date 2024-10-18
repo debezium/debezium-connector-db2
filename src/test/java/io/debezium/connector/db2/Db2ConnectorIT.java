@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
@@ -407,7 +408,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         records = records.subList(1, records.size());
         for (Iterator<SourceRecord> it = records.iterator(); it.hasNext();) {
             SourceRecord record = it.next();
-            assertThat(record.sourceOffset().get("snapshot")).as("Snapshot phase").isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).as("Snapshot phase").isEqualTo(SnapshotType.INITIAL.toString());
             if (it.hasNext()) {
                 assertThat(record.sourceOffset().get("snapshot_completed")).as("Snapshot in progress").isEqualTo(false);
             }
