@@ -19,7 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.data.VariableScaleDecimal;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Testing;
 
@@ -28,7 +28,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class DatatypesFromSnapshotIT extends AbstractConnectorTest {
+public class DatatypesFromSnapshotIT extends AbstractAsyncEngineConnectorTest {
 
     private Db2Connection connection;
 

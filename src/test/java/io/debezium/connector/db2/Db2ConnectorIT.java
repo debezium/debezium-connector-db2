@@ -40,7 +40,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
@@ -56,7 +56,7 @@ import junit.framework.TestCase;
  *
  * @author Jiri Pechanec, Luis Garcés-Erice, Peter Urbanetz
  */
-public class Db2ConnectorIT extends AbstractConnectorTest {
+public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private Db2Connection connection;
 

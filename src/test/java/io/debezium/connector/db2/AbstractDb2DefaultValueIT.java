@@ -27,7 +27,7 @@ import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -39,7 +39,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractDb2DefaultValueIT extends AbstractConnectorTest {
+public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     private Db2Connection connection;
     private Configuration config;
