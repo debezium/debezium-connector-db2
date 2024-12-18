@@ -13,11 +13,10 @@ Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/
 
 Debezium is an open source project that provides a low latency data streaming platform for change data capture (CDC).
 
-This repository contains incubating connector for Db2 which is in an **early stage of its development**.
-You are encouraged to explore this connector and test it, but it is not recommended yet for production usage.
-E.g. the format of emitted messages may change, specific features may not be implemented yet etc.
+This repository contains the connector for Db2.
+While the implementation for Db2 on LUW is stable and mature, the implementation on z/OS is still incubating and should not be used in production.
 
-Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/connectors/db2.html). See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
+Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/stable/connectors/db2.html). See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
 
 ## Building and testing the Db2 connector
 
