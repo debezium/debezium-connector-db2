@@ -4,12 +4,12 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.0.7-SNAPSHOT</version>
+        <version>3.1.0-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-db2</artifactId>
-    <version>3.0.7-SNAPSHOT</version>
+    <version>3.1.0-SNAPSHOT</version>
     <name>Debezium Connector for IBM DB2 Server</name>
     <packaging>jar</packaging>
 
