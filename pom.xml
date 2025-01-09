@@ -273,7 +273,7 @@
                             </run>
                         </image>
                         <image>
-                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
