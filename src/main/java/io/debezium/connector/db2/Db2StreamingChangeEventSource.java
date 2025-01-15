@@ -390,9 +390,16 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
      *
      */
     private static class ChangeTablePointer extends ChangeTableResultSet<Db2ChangeTable, TxLogPosition> {
+        private final ResultSet resultSet;
 
         ChangeTablePointer(Db2ChangeTable changeTable, ResultSet resultSet) {
-            super(changeTable, resultSet, COL_DATA);
+            super(changeTable, COL_DATA, 0);
+            this.resultSet = resultSet;
+        }
+
+        @Override
+        protected ResultSet getNextResultSet(TxLogPosition txLogPosition) throws SQLException {
+            return resultSet;
         }
 
         @Override
