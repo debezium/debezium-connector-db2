@@ -5,17 +5,25 @@
  */
 package io.debezium.connector.db2;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
@@ -42,22 +50,27 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         TestHelper.disableTableCdc(connection, "B");
         TestHelper.disableTableCdc(connection, "A42");
         TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
+        TestHelper.disableTableCdc(connection, "DB2INST2", "DEBEZIUM_SIGNAL");
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
         connection.execute(
                 "DROP TABLE IF EXISTS a",
                 "DROP TABLE IF EXISTS b",
                 "DROP TABLE IF EXISTS a42",
-                "DROP TABLE IF EXISTS debezium_signal");
-        connection.execute(
+                "DROP TABLE IF EXISTS debezium_signal",
+                "DROP TABLE IF EXISTS DB2INST2.debezium_signal");
+        connection.execute("CREATE SCHEMA DB2INST2",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE a42 (pk1 int, pk2 int, pk3 int, pk4 int, aa int)",
-                "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
+                "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))",
+                "CREATE TABLE DB2INST2.debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
 
         TestHelper.enableDbCdc(connection);
         connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST2'");
         TestHelper.refreshAndWait(connection);
         TestHelper.enableTableCdc(connection, "DEBEZIUM_SIGNAL");
+        TestHelper.enableTableCdc(connection, "DB2INST2", "DEBEZIUM_SIGNAL");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -71,12 +84,15 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
             TestHelper.disableTableCdc(connection, "B");
             TestHelper.disableTableCdc(connection, "A42");
             TestHelper.disableTableCdc(connection, "DEBEZIUM_SIGNAL");
+            TestHelper.disableTableCdc(connection, "DB2INST2", "DEBEZIUM_SIGNAL");
             connection.rollback();
             connection.execute(
                     "DROP TABLE IF EXISTS a",
                     "DROP TABLE IF EXISTS b",
                     "DROP TABLE IF EXISTS a42",
-                    "DROP TABLE IF EXISTS debezium_signal");
+                    "DROP TABLE IF EXISTS debezium_signal",
+                    "DROP TABLE IF EXISTS DB2INST2.debezium_signal",
+                    "DROP SCHEMA DB2INST2 RESTRICT");
             connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
@@ -159,10 +175,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
 
     @Override
     protected void sendAdHocSnapshotSignal() throws SQLException {
+        sendAdHocSnapshotSignal(signalTableName());
+    }
+
+    protected void sendAdHocSnapshotSignal(String signalTable) throws SQLException {
         connection.execute(
                 String.format(
                         "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
-                        signalTableName(), tableName()));
+                        signalTable, tableName()));
         TestHelper.refreshAndWait(this.connection);
     }
 
@@ -229,6 +249,30 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
     @Flaky("DBZ-7478")
     public void snapshotWithAdditionalCondition() throws Exception {
         super.snapshotWithAdditionalCondition();
+    }
+
+    @Test
+    @FixFor("DBZ-8833")
+    public void snapshotOnlyWithSignalDataCollectionInDifferentSchema() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(cfg -> cfg.with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "DB2INST2.DEBEZIUM_SIGNAL"));
+
+        sendAdHocSnapshotSignal("DB2INST2.DEBEZIUM_SIGNAL");
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, sourceRecord -> {
+            Set<String> snapshotTypes = sourceRecord.stream()
+                    .map((s) -> s.sourceOffset().get("snapshot").toString())
+                    .collect(Collectors.toSet());
+
+            assertThat(snapshotTypes).containsOnly(INCREMENTAL);
+        });
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
     }
 
 }
