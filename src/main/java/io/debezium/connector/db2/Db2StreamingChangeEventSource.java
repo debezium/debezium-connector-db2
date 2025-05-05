@@ -214,6 +214,12 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
+                            if (connectorConfig.getZStopLSNIgnoreInd()) {
+                                LOGGER.trace("Z StopLSN Ignore setting true. Setting the stop LSN as null instead of {}",
+                                        tableWithSmallestLsn.getChangeTable().getStopLsn());
+                                tableWithSmallestLsn.getChangeTable().setStopLsn(Lsn.NULL);
+                                LOGGER.trace("Z StopLSN Ignore setting true. the stop LSN is now {}", tableWithSmallestLsn.getChangeTable().getStopLsn());
+                            }
                             if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
                                     tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
                                 LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
@@ -229,7 +235,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                             }
                             final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
                             final int operation = tableWithSmallestLsn.getOperation();
-                            final Object[] data = tableWithSmallestLsn.getData();
+                            Object[] data = tableWithSmallestLsn.getData();
 
                             // UPDATE consists of two consecutive events, first event contains
                             // the row before it was updated and the second the row after
@@ -242,7 +248,16 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 }
                                 eventCount = 2;
                             }
-                            final Object[] dataNext = (operation == Db2ChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
+                            Object[] dataNext = null;
+                            // Specifically handle that updates in Z are single-record after state logs
+                            if ((connectorConfig.getDb2Platform().equals(Db2ConnectorConfig.Db2Platform.Z)) &&
+                                    (operation == Db2ChangeRecordEmitter.OP_UPDATE_SINGLE)) {
+                                dataNext = tableWithSmallestLsn.getData();
+                                data = null;
+                            }
+                            else if (operation == Db2ChangeRecordEmitter.OP_UPDATE_BEFORE) {
+                                dataNext = tableWithSmallestLsn.getData();
+                            }
 
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.event(tableWithSmallestLsn.getChangeTable().getSourceTableId(),

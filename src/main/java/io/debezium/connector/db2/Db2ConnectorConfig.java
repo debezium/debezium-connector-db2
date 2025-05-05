@@ -387,6 +387,18 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         }
     }
 
+    /**
+     * Define if the connector, running in Z/OS mode, should ignore the stopLsn (IBMSNAP_REGISTER.CD_OLD_SYNCPOINT) during polling
+     */
+    public static final Field Z_STOP_LSN_IGNORE_IND = Field.create("z.stop.lsn.ignore.ind")
+            .withDisplayName("Z/OS stopLSN ignore indicator")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withDescription("If true, causes the connector to ignore the stopLsn value from the " +
+                    "IBMSNAP_REGISTER.CD_OLD_SYNCPOINT column when polling.  A" +
+                    "pply this if events are getting dropped dure to the stopLSN being " +
+                    "smaller than the current range of LSNs.  Only applies to Z_OS");
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -517,6 +529,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final SnapshotLockingMode snapshotLockingMode;
 
     private final Db2Platform db2Platform;
+    private final Boolean zStopLSNIgnoreInd;
     private final String cdcChangeTablesSchema;
     private final String cdcControlSchema;
 
@@ -536,6 +549,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
         this.db2Platform = Db2Platform.parse(config.getString(DB2_PLATFORM), DB2_PLATFORM.defaultValueAsString());
+        this.zStopLSNIgnoreInd = config.getBoolean(Z_STOP_LSN_IGNORE_IND);
         this.cdcChangeTablesSchema = config.getString(CDC_CHANGE_TABLES_SCHEMA);
         this.cdcControlSchema = config.getString(CDC_CONTROL_SCHEMA);
     }
@@ -558,6 +572,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public Db2Platform getDb2Platform() {
         return db2Platform;
+    }
+
+    public Boolean getZStopLSNIgnoreInd() {
+        return zStopLSNIgnoreInd;
     }
 
     public String getCdcChangeTablesSchema() {
