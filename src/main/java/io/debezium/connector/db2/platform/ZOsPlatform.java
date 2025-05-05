@@ -31,6 +31,7 @@ public class ZOsPlatform implements Db2PlatformAdapter {
                 " order by IBMSNAP_COMMITSEQ, IBMSNAP_INTENTSEQ), " +
                 " tmp2 AS (SELECT " +
                 " CASE " +
+                " WHEN cdc.IBMSNAP_OPERATION = 'U' THEN 5" +
                 " WHEN cdc.IBMSNAP_OPERATION = 'D' AND cdc2.IBMSNAP_OPERATION ='I' THEN 3 " +
                 " WHEN cdc.IBMSNAP_OPERATION = 'I' AND cdc2.IBMSNAP_OPERATION ='D' THEN 4 " +
                 " WHEN cdc.IBMSNAP_OPERATION = 'D' THEN 1 " +
