@@ -21,6 +21,7 @@ public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter<Db2Par
     public static final int OP_INSERT = 2;
     public static final int OP_UPDATE_BEFORE = 3;
     public static final int OP_UPDATE_AFTER = 4;
+    public static final int OP_UPDATE_SINGLE = 5;
 
     private final int operation;
     private final Object[] data;
@@ -44,6 +45,9 @@ public class Db2ChangeRecordEmitter extends RelationalChangeRecordEmitter<Db2Par
             return Operation.CREATE;
         }
         else if (operation == OP_UPDATE_BEFORE) {
+            return Operation.UPDATE;
+        }
+        else if (operation == OP_UPDATE_SINGLE) {
             return Operation.UPDATE;
         }
         throw new IllegalArgumentException("Received event of unexpected command type: " + operation);
