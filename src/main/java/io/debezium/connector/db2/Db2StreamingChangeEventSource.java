@@ -214,11 +214,14 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
-                            if (connectorConfig.getZStopLSNIgnoreInd()) {
-                                LOGGER.trace("Z StopLSN Ignore setting true. Setting the stop LSN as null instead of {}",
+                            if (connectorConfig.isZStopLsnIgnore()) {
+                                LOGGER.trace("{} setting true. Setting the stop LSN as null instead of {}",
+                                        Db2ConnectorConfig.Z_STOP_LSN_IGNORE.name(),
                                         tableWithSmallestLsn.getChangeTable().getStopLsn());
                                 tableWithSmallestLsn.getChangeTable().setStopLsn(Lsn.NULL);
-                                LOGGER.trace("Z StopLSN Ignore setting true. the stop LSN is now {}", tableWithSmallestLsn.getChangeTable().getStopLsn());
+                                LOGGER.trace("{} setting true. The stop LSN is now {}",
+                                        Db2ConnectorConfig.Z_STOP_LSN_IGNORE.name(),
+                                        tableWithSmallestLsn.getChangeTable().getStopLsn());
                             }
                             if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
                                     tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
@@ -249,14 +252,18 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 eventCount = 2;
                             }
                             Object[] dataNext = null;
-                            // Specifically handle that updates in Z are single-record after state logs
-                            if ((connectorConfig.getDb2Platform().equals(Db2ConnectorConfig.Db2Platform.Z)) &&
-                                    (operation == Db2ChangeRecordEmitter.OP_UPDATE_SINGLE)) {
+                            if (operation == Db2ChangeRecordEmitter.OP_UPDATE_BEFORE) {
                                 dataNext = tableWithSmallestLsn.getData();
-                                data = null;
                             }
-                            else if (operation == Db2ChangeRecordEmitter.OP_UPDATE_BEFORE) {
-                                dataNext = tableWithSmallestLsn.getData();
+                            // Specifically handle that updates in Z are single-record after state logs
+                            else if (operation == Db2ChangeRecordEmitter.OP_UPDATE_SINGLE) {
+                                if (connectorConfig.getDb2Platform() == Db2ConnectorConfig.Db2Platform.Z) {
+                                    dataNext = tableWithSmallestLsn.getData();
+                                    data = null;
+                                }
+                                else {
+                                    LOGGER.warn("Unexpected event type {} for table {}. The event will not be properly initialized.", operation, tableId);
+                                }
                             }
 
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
