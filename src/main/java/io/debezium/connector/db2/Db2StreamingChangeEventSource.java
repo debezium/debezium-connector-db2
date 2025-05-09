@@ -255,15 +255,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                             if (operation == Db2ChangeRecordEmitter.OP_UPDATE_BEFORE) {
                                 dataNext = tableWithSmallestLsn.getData();
                             }
-                            // Specifically handle that updates in Z are single-record after state logs
+                            // Specifically handle that updates that DB2 is showing as single "U" events
                             else if (operation == Db2ChangeRecordEmitter.OP_UPDATE_SINGLE) {
-                                if (connectorConfig.getDb2Platform() == Db2ConnectorConfig.Db2Platform.Z) {
-                                    dataNext = tableWithSmallestLsn.getData();
-                                    data = null;
-                                }
-                                else {
-                                    LOGGER.warn("Unexpected event type {} for table {}. The event will not be properly initialized.", operation, tableId);
-                                }
+                                dataNext = tableWithSmallestLsn.getData();
+                                data = null;
                             }
 
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
