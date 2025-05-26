@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -162,6 +163,11 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     }
 
     @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
@@ -170,6 +176,11 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 .collect(Collectors.toList());
 
         return sourceRecords;
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override
