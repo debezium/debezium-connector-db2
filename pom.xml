@@ -9,7 +9,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-db2</artifactId>
-    <version>3.2.0.Beta1</version>
+    <version>3.2.0-SNAPSHOT</version>
     <name>Debezium Connector for IBM DB2 Server</name>
     <packaging>jar</packaging>
     <description>Debezium Db2 connector is an open source change data capture connector for Db2 LUW databases</description>
@@ -19,7 +19,7 @@
         <connection>scm:git:git@github.com:debezium/debezium-connector-db2.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium-connector-db2.git</developerConnection>
         <url>https://github.com/debezium/debezium-connector-db2</url>
-      <tag>v3.2.0.Beta1</tag>
+      <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
