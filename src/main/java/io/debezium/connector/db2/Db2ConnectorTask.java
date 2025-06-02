@@ -104,7 +104,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        validateAndLoadSchemaHistory(connectorConfig, metadataConnection::validateLogPosition, previousOffsets, schema,
+        validateSchemaHistory(connectorConfig, metadataConnection::validateLogPosition, previousOffsets, schema,
                 snapshotterService.getSnapshotter());
 
         taskContext = new Db2TaskContext(connectorConfig, schema);
