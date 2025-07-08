@@ -34,6 +34,7 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -87,7 +88,11 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         }
 
         final Db2ValueConverters valueConverters = new Db2ValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode());
-        this.schema = new Db2DatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicNamingStrategy, dataConnection);
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        this.schema = new Db2DatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicNamingStrategy, dataConnection,
+                connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
         this.schema.initializeStorage();
 
         taskContext = new Db2TaskContext(connectorConfig, schema);
@@ -103,9 +108,6 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 

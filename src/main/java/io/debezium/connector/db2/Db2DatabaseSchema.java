@@ -8,6 +8,7 @@ package io.debezium.connector.db2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -30,13 +31,13 @@ public class Db2DatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public Db2DatabaseSchema(Db2ConnectorConfig connectorConfig, Db2ValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
                              TopicNamingStrategy<TableId> topicNamingStrategy,
-                             Db2Connection connection) {
+                             Db2Connection connection, CustomConverterRegistry customConverterRegistry) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverters,
                         new Db2DefaultValueConverter(valueConverters, connection),
                         schemaNameAdjuster,
-                        connectorConfig.customConverterRegistry(),
+                        customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
                         false),
