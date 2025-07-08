@@ -121,10 +121,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext<Db2Partition, Db2OffsetContext> ctx, Db2OffsetContext previousOffset) throws Exception {
-
-        // Support the existence of the case when the previous offset.
-        // e.g., schema_only_recovery snapshot mode
-        if (connectorConfig.getSnapshotMode() != Db2ConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
