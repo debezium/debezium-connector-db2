@@ -38,7 +38,7 @@ public class LuwPlatform implements Db2PlatformAdapter {
                 + "FROM " + connectorConfig.getCdcChangeTablesSchema() + ".# cdc WHERE   IBMSNAP_COMMITSEQ >= ? AND IBMSNAP_COMMITSEQ <= ? "
                 + "order by IBMSNAP_COMMITSEQ, IBMSNAP_INTENTSEQ";
 
-        this.getListOfCdcEnabledTables = "select r.SOURCE_OWNER, r.SOURCE_TABLE, r.CD_OWNER, r.CD_TABLE, r.CD_NEW_SYNCHPOINT, r.CD_OLD_SYNCHPOINT, t.TBSPACEID, t.TABLEID , CAST((t.TBSPACEID * 65536 +  t.TABLEID )AS INTEGER )from "
+        this.getListOfCdcEnabledTables = "select r.SOURCE_OWNER, r.SOURCE_TABLE, r.CD_OWNER, r.CD_TABLE, r.SYNCHPOINT, r.CD_OLD_SYNCHPOINT, t.TBSPACEID, t.TABLEID , CAST((t.TBSPACEID * 65536 +  t.TABLEID )AS INTEGER )from "
                 + connectorConfig.getCdcControlSchema()
                 + ".IBMSNAP_REGISTER r left JOIN SYSCAT.TABLES t ON r.SOURCE_OWNER  = t.TABSCHEMA AND r.SOURCE_TABLE = t.TABNAME  WHERE r.SOURCE_OWNER <> ''";
 
