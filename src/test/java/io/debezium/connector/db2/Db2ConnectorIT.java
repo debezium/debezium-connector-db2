@@ -473,8 +473,9 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.tableb")
+                .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
         connection.execute(
                 "INSERT INTO tableb VALUES(1, 'b')");
@@ -482,8 +483,8 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         start(Db2Connector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        consumeRecordsByTopic(1);
+        // Wait for schema changes and snapshot completion
+        consumeRecordsByTopic(1 + 1);
 
         TestHelper.enableDbCdc(connection);
         connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
@@ -499,9 +500,54 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         TestHelper.refreshAndWait(connection);
 
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        final List<SourceRecord> tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
-        final List<SourceRecord> tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        List<SourceRecord> tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        List<SourceRecord> tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(tableA == null || tableA.isEmpty()).isTrue();
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + 100 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        System.out.println("Records: " + records.allRecordsInOrder());
+        tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(tableA == null || tableA.isEmpty()).isTrue();
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + 200 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        System.out.println("Records: " + records.allRecordsInOrder());
+        tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(tableA == null || tableA.isEmpty()).isTrue();
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + 300 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        System.out.println("Records: " + records.allRecordsInOrder());
+        tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
         assertThat(tableA == null || tableA.isEmpty()).isTrue();
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
 
