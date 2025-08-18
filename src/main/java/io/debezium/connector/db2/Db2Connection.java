@@ -49,6 +49,10 @@ import io.debezium.util.BoundedConcurrentHashMap;
  */
 public class Db2Connection extends JdbcConnection {
 
+    private static final int COLUMN_IDX_OLD_SYNCHPOINT = 6;
+
+    private static final int COLUMN_IDX_SYNCHPOINT = 5;
+
     private static final String GET_DATABASE_NAME = "SELECT CURRENT SERVER FROM SYSIBM.SYSDUMMY1"; // DB2
 
     private static Logger LOGGER = LoggerFactory.getLogger(Db2Connection.class);
@@ -271,8 +275,8 @@ public class Db2Connection extends JdbcConnection {
                                 new TableId("", rs.getString(1), rs.getString(2)),
                                 rs.getString(4),
                                 rs.getInt(9),
-                                Lsn.valueOf(rs.getBytes(5)),
-                                Lsn.valueOf(rs.getBytes(6)),
+                                Lsn.valueOf(rs.getBytes(COLUMN_IDX_OLD_SYNCHPOINT)),
+                                Lsn.valueOf(rs.getBytes(COLUMN_IDX_SYNCHPOINT)),
                                 connectorConfig.getCdcChangeTablesSchema()
 
                         ));
