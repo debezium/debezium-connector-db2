@@ -110,11 +110,6 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
-                <version>${version.debezium}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
@@ -154,13 +149,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
-                <version>${version.debezium}</version>
-                <type>test-jar</type>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
                 <version>${version.debezium}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
