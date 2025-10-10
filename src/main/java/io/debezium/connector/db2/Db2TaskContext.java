@@ -15,7 +15,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  */
 public class Db2TaskContext extends CdcSourceTaskContext {
 
-    public Db2TaskContext(Db2ConnectorConfig config, Db2DatabaseSchema schema) {
-        super(config, config.getCustomMetricTags(), schema::tableIds);
+    public Db2TaskContext(Db2ConnectorConfig config) {
+        super(config, config.getCustomMetricTags());
     }
 }
