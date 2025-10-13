@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.db2;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
 /**
@@ -13,9 +14,9 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  * @author Jiri Pechanec
  *
  */
-public class Db2TaskContext extends CdcSourceTaskContext {
+public class Db2TaskContext extends CdcSourceTaskContext<Db2ConnectorConfig> {
 
-    public Db2TaskContext(Db2ConnectorConfig config) {
-        super(config, config.getCustomMetricTags());
+    public Db2TaskContext(Configuration rawConfig, Db2ConnectorConfig config) {
+        super(rawConfig, config, config.getCustomMetricTags());
     }
 }

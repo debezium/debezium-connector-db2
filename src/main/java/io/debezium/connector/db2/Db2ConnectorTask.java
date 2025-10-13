@@ -96,7 +96,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
                 connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
         this.schema.initializeStorage();
 
-        taskContext = new Db2TaskContext(connectorConfig);
+        taskContext = new Db2TaskContext(config, connectorConfig);
 
         Offsets<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),
                 new Db2OffsetContext.Loader(connectorConfig));
