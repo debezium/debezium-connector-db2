@@ -634,6 +634,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableList.split(",")) {
+            table = table.trim();
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table, false),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
