@@ -5,10 +5,9 @@
  */
 package io.debezium.connector.db2;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import static io.debezium.util.Strings.listOfTrimmed;
+
+import java.util.*;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -625,16 +624,16 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
      */
     @Override
     public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+        String tableListString = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
 
-        if (tableList == null) {
+        if (tableListString == null) {
             return Collections.emptyMap();
         }
 
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+        final List<String> tableList = listOfTrimmed(tableListString, ',', s -> s);
 
-        for (String table : tableList.split(",")) {
-            table = table.trim();
+        for (String table : tableList) {
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table, false),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
