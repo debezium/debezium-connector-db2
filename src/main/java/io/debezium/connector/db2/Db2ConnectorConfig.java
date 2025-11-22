@@ -7,7 +7,11 @@ package io.debezium.connector.db2;
 
 import static io.debezium.util.Strings.listOfTrimmed;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
