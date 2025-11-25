@@ -23,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
@@ -61,6 +62,7 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     private volatile Db2Connection metadataConnection;
     private volatile ErrorHandler errorHandler;
     private volatile Db2DatabaseSchema schema;
+    private Db2ConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -68,8 +70,17 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new Db2ConnectorConfig(applyFetchSizeToJdbcConfig(config));
+        taskContext = new Db2TaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     public ChangeEventSourceCoordinator<Db2Partition, Db2OffsetContext> start(Configuration config) {
-        final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(applyFetchSizeToJdbcConfig(config));
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
@@ -93,10 +104,8 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
         this.schema = new Db2DatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicNamingStrategy, dataConnection,
-                connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
+                connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class), taskContext);
         this.schema.initializeStorage();
-
-        taskContext = new Db2TaskContext(config, connectorConfig);
 
         Offsets<Db2Partition, Db2OffsetContext> previousOffsets = getPreviousOffsets(new Db2Partition.Provider(connectorConfig),
                 new Db2OffsetContext.Loader(connectorConfig));
