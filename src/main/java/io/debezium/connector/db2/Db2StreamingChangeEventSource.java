@@ -141,6 +141,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 // There is no change in the database
                 if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn()) && shouldIncreaseFromLsn) {
                     LOGGER.debug("No change in the database");
+                    handlePause(context);
                     metronome.pause();
                     continue;
                 }
@@ -292,12 +293,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
 
-                if (context.isPaused()) {
-                    LOGGER.info("Streaming will now pause");
-                    context.streamingPaused();
-                    context.waitSnapshotCompletion();
-                    LOGGER.info("Streaming resumed");
-                }
+                handlePause(context);
             }
         }
         catch (Exception e) {
@@ -305,6 +301,18 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
+    private void handlePause(final ChangeEventSourceContext context){
+        try{
+            if (context.isPaused()) {
+                LOGGER.info("Streaming will now pause");
+                context.streamingPaused();
+                context.waitSnapshotCompletion();
+                LOGGER.info("Streaming resumed");
+            }
+        }catch (Exception e) {
+            errorHandler.setProducerThrowable(e);
+        }
+    }
     @Override
     public Db2OffsetContext getOffsetContext() {
         return effectiveOffsetContext;
