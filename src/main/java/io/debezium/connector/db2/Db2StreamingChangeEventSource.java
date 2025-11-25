@@ -301,18 +301,20 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
-    private void handlePause(final ChangeEventSourceContext context){
-        try{
+    private void handlePause(final ChangeEventSourceContext context) {
+        try {
             if (context.isPaused()) {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
                 context.waitSnapshotCompletion();
                 LOGGER.info("Streaming resumed");
             }
-        }catch (Exception e) {
+        }
+        catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
     }
+
     @Override
     public Db2OffsetContext getOffsetContext() {
         return effectiveOffsetContext;
