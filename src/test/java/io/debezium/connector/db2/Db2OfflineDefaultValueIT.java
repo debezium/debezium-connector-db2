@@ -7,7 +7,7 @@ package io.debezium.connector.db2;
 
 import java.sql.SQLException;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
@@ -21,7 +21,7 @@ import io.debezium.relational.TableId;
  */
 public class Db2OfflineDefaultValueIT extends AbstractDb2DefaultValueIT {
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         super.before();
         if (VerifyRecord.isApucurioAvailable()) {

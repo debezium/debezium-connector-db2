@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Connector;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class Db2ConnectorTest {
 

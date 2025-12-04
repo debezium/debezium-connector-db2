@@ -9,8 +9,8 @@ package io.debezium.connector.db2;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
@@ -21,7 +21,7 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
 
     private Db2Connection connection;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         TestHelper.dropAllTables();
         connection = TestHelper.testConnection();
@@ -41,7 +41,7 @@ public class NotificationsIT extends AbstractNotificationsIT<Db2Connector> {
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);

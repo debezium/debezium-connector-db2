@@ -11,9 +11,9 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
@@ -31,7 +31,7 @@ public class Db2CaseSensitiveObjectIT extends AbstractAsyncEngineConnectorTest {
 
     private Db2Connection connection;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
@@ -44,7 +44,7 @@ public class Db2CaseSensitiveObjectIT extends AbstractAsyncEngineConnectorTest {
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);

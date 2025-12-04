@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.db2;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
@@ -24,7 +24,7 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
 
     private Db2Connection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         initializeConnectorTestFramework();
@@ -32,7 +32,7 @@ public class Db2ReselectColumnsProcessorIT extends AbstractReselectProcessorTest
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         try {
             super.afterEach();

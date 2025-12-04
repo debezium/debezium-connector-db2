@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.db2;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.relational.TableId;
 
@@ -24,10 +23,8 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
+@ExtendWith(ConditionalFailExtension.class)
 public class ZZZDb2OnlineDefaultValueIT extends AbstractDb2DefaultValueIT {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     @Test
     @FixFor("DBZ-4990")

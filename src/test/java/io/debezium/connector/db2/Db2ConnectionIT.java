@@ -6,7 +6,7 @@
 
 package io.debezium.connector.db2;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.db2.util.TestHelper;
 

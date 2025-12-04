@@ -19,7 +19,7 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -226,7 +226,7 @@ public class TestHelper {
 
         while (true) {
             if (waitForSeconds-- <= 0) {
-                Assert.fail("Snapshot was not completed on time");
+                Assertions.fail("Snapshot was not completed on time");
             }
             try {
                 final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.db2_server:type=connector-metrics,context=snapshot,server=testdb"),
