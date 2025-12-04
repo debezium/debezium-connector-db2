@@ -16,11 +16,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFailExtension;
+import io.debezium.junit.SkipTestExtension;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.util.Testing;
 
-@ExtendWith(ConditionalFailExtension.class)
+@ExtendWith(SkipTestExtension.class)
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     private Db2Connection connection;
