@@ -11,9 +11,9 @@ import java.sql.SQLException;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
@@ -39,7 +39,7 @@ public class DatatypesFromSnapshotIT extends AbstractAsyncEngineConnectorTest {
             "INSERT INTO dt_numeric VALUES(1, 1, 3.123456789012345678, 3.012345678901234567890123456789)"
     };
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
@@ -53,7 +53,7 @@ public class DatatypesFromSnapshotIT extends AbstractAsyncEngineConnectorTest {
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);

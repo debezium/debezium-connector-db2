@@ -9,25 +9,23 @@ package io.debezium.connector.db2;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.util.Testing;
 
+@ExtendWith(ConditionalFailExtension.class)
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     private Db2Connection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.disableDbCdc(connection);
@@ -53,7 +51,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);

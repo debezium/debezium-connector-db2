@@ -11,7 +11,8 @@ import static io.debezium.connector.db2.util.TestHelper.TYPE_SCALE_PARAMETER_KEY
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -24,10 +25,10 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -41,7 +42,7 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -49,21 +50,17 @@ import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Testing;
 
-import junit.framework.TestCase;
-
 /**
  * Integration test for the Debezium DB2 connector.
  *
  * @author Jiri Pechanec, Luis Garcés-Erice, Peter Urbanetz
  */
+@ExtendWith(ConditionalFailExtension.class)
 public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private Db2Connection connection;
 
-    @Rule
-    public ConditionalFail conditionalFail = new ConditionalFail();
-
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         TestHelper.dropAllTables();
 
@@ -86,7 +83,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
@@ -395,7 +392,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.refreshAndWait(connection);
         for (int i = 0; !connection.getMaxLsn().isAvailable(); i++) {
             if (i == 30) {
-                org.junit.Assert.fail("Initial changes not written to CDC structures");
+                org.junit.jupiter.api.Assertions.fail("Initial changes not written to CDC structures");
             }
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
             Thread.sleep(1000);
@@ -939,11 +936,11 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
             SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
             assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.ALWAYS_SNAPSHOT")).hasSize(expectedRecordCount);
             Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(1, struct.get("id"));
-            TestCase.assertEquals("Test1", struct.get("data"));
+            assertEquals(1, struct.get("id"));
+            assertEquals("Test1", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
 
             stopConnector();
 
@@ -957,11 +954,11 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Check we get up-to-date data in the snapshot.
             assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.ALWAYS_SNAPSHOT")).hasSize(expectedRecordCount);
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(3, struct.get("id"));
-            TestCase.assertEquals("Test3", struct.get("data"));
+            assertEquals(3, struct.get("id"));
+            assertEquals("Test3", struct.get("data"));
         }
         catch (Exception e) {
             e.printStackTrace();

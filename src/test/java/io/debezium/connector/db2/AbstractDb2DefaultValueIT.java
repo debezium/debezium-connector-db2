@@ -17,10 +17,10 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.util.TestHelper;
@@ -50,7 +50,7 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
     // VARGRAPHIC
     // XML
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
@@ -65,7 +65,7 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
@@ -80,7 +80,7 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
 
     @Test
     @FixFor("DBZ-4990")
-    @Ignore("The ASN capture process does to not capture changes for a table using boolean data types.")
+    @Disabled("The ASN capture process does to not capture changes for a table using boolean data types.")
     public void shouldHandleBooleanDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_boolean", "boolean",

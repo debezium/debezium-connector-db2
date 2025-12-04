@@ -14,10 +14,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration.Builder;
@@ -25,24 +25,20 @@ import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
-import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipTestExtension;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
+@ExtendWith({ SkipTestExtension.class, ConditionalFailExtension.class })
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Connector> {
 
     private Db2Connection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-    @Rule
-    public ConditionalFail conditionalFail = new ConditionalFail();
-
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.disableDbCdc(connection);
@@ -76,7 +72,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Db2Co
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
