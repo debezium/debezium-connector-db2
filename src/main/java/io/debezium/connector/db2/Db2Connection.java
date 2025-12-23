@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.Metronome;
 
 /**
  * {@link JdbcConnection} extension to be used with IBM Db2
@@ -86,6 +88,8 @@ public class Db2Connection extends JdbcConnection {
     private final Db2ConnectorConfig connectorConfig;
     private final Db2PlatformAdapter platform;
 
+    final Metronome metronomeForNullLsn = Metronome.sleeper(Duration.ofMillis(500), () -> System.currentTimeMillis());
+
     /**
      * Creates a new connection using the supplied configuration.
      *
@@ -111,15 +115,69 @@ public class Db2Connection extends JdbcConnection {
         }, "Maximum LSN query must return exactly one value"));
     }
 
+    public Lsn getMaxLsnForTimespan(final Lsn startLsn) throws SQLException, InterruptedException {
+        final Lsn maxLsn = getMaxLsn();
+        if (!startLsn.isAvailable()) {
+            return maxLsn; // CDC agent must just be starting if there are no changes.
+        }
+        if (maxLsn.compareTo(startLsn) <= 0) {
+            return maxLsn;
+        }
+        Lsn intervalEndLsn = null;
+        int timespanMultiplier = 1;
+        while (true) {
+            intervalEndLsn = getMaxLsnForTimespan(startLsn, timespanMultiplier);
+            if (intervalEndLsn != Lsn.NULL) {
+                if (maxLsn.compareTo(intervalEndLsn) >= 0) { // If we've gone past the maxLsn, just return that
+                    return maxLsn;
+                }
+                else {
+                    return intervalEndLsn;
+                }
+            }
+            metronomeForNullLsn.pause();
+            timespanMultiplier++;
+        }
+    }
+
     /**
-     * Provides all changes recorded by the DB2 CDC capture process for a given table.
-     *
-     * @param tableId  - the requested table changes
-     * @param fromLsn  - closed lower bound of interval of changes to be provided
-     * @param toLsn    - closed upper bound of interval  of changes to be provided
-     * @param consumer - the change processor
-     * @throws SQLException
+     * @return the current largest log sequence number
      */
+    private Lsn getMaxLsnForTimespan(final Lsn startLsn, int timespanMultiplier) throws SQLException {
+        Lsn endLsnForStreaming = prepareQueryAndMap(
+                platform.getEndLsnForSecondsFromLsnQuery(),
+                statement -> {
+                    statement.setBytes(1, startLsn.getBinary());
+                    statement.setInt(2, (connectorConfig.getStreamingQueryTimespanSeconds() * timespanMultiplier));
+                    statement.setBytes(3, startLsn.getBinary());
+                    statement.setBytes(4, startLsn.getBinary());
+
+                },
+                rs -> {
+                    if (rs.next() == false) {
+                        LOGGER.warn("No end LSN found for streaming in {} seconds from {}", connectorConfig.getStreamingQueryTimespanSeconds() * timespanMultiplier,
+                                startLsn);
+                        return Lsn.NULL;
+                    }
+                    else {
+                        Timestamp ts = rs.getTimestamp(1);
+                        byte[] bytesLsn = rs.getBytes(2);
+                        LOGGER.info("End LSN representing timestamp {} for streaming is {}", ts, bytesLsn);
+                        return Lsn.valueOf(bytesLsn);
+                    }
+                });
+        return endLsnForStreaming;
+    }
+
+    /**
+    * Provides all changes recorded by the DB2 CDC capture process for a given table.
+    *
+    * @param tableId  - the requested table changes
+    * @param fromLsn  - closed lower bound of interval of changes to be provided
+    * @param toLsn    - closed upper bound of interval  of changes to be provided
+    * @param consumer - the change processor
+    * @throws SQLException
+    */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
         final String query = platform.getAllChangesForTableQuery().replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {

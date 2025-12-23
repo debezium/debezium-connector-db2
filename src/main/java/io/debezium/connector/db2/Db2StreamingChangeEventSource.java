@@ -130,7 +130,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
-                final Lsn currentMaxLsn = dataConnection.getMaxLsn();
+                Lsn currentMaxLsn = null;
+                if (!connectorConfig.isStreamingQueryTimespanEnabled()) {
+                    currentMaxLsn = dataConnection.getMaxLsn();
+                }
+                else {
+                    currentMaxLsn = dataConnection.getMaxLsnForTimespan(lastProcessedPosition.getCommitLsn());
+                }
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!currentMaxLsn.isAvailable()) {

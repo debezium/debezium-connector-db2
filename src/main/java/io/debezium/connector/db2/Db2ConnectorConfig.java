@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigException;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
@@ -48,6 +49,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private static final String DEFAULT_CDC_SCHEMA = "ASNCDC";
 
     public static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
+
+    public static final int DEFAULT_STREAMING_QUERY_TIMESPAN_SECONDS = 0; // No limit
 
     protected static final int DEFAULT_PORT = 50000;
 
@@ -483,6 +486,28 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
+    public static final Field STREAMING_QUERY_TIMESPAN_SECONDS = Field.create("streaming.query.timespan.seconds")
+            .withDescription(
+                    "The maximum number of seconds for a streaming query to include that query's result set, starting from the earliest row in this query.  " +
+                            "Used to limit the size of queries when the change table is large to avoid excessive resource usage. If 0, no timespan limit will apply.")
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.SHORT)
+            .withDefault(DEFAULT_STREAMING_QUERY_TIMESPAN_SECONDS)
+            .withValidation((config, field, problems) -> {
+                Integer value = config.getInteger(field);
+                if (value == 1) {
+                    problems.accept(field, value, "The value of 1 can cause an infinite loop.  " +
+                            "Please set it to a higher setting or zero to disable.  120 seconds is a commonly used value.");
+                    return 1;
+                }
+                else if (value < 0) {
+                    problems.accept(field, value, "The value must be greater than or equal to 0, but not 1.");
+                    return 1;
+                }
+                return 0;
+            });
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
 
@@ -536,6 +561,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final String cdcChangeTablesSchema;
     private final String cdcControlSchema;
 
+    private final int streamingQueryTimespanSeconds;
+    private final boolean streamingQueryTimespanEnabled;
+
     public Db2ConnectorConfig(Configuration config) {
         super(
                 Db2Connector.class,
@@ -555,6 +583,18 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.zStopLsnIgnore = config.getBoolean(Z_STOP_LSN_IGNORE);
         this.cdcChangeTablesSchema = config.getString(CDC_CHANGE_TABLES_SCHEMA);
         this.cdcControlSchema = config.getString(CDC_CONTROL_SCHEMA);
+
+        this.streamingQueryTimespanSeconds = config.getInteger(STREAMING_QUERY_TIMESPAN_SECONDS);
+        if (this.streamingQueryTimespanSeconds <= 0) {
+            this.streamingQueryTimespanEnabled = false;
+        }
+        else if (this.streamingQueryTimespanSeconds == 1) {
+            throw new ConfigException("The {} setting of 1 can cause an infinite loop.  " +
+                    "Please set it to a higher setting or zero to disable.", STREAMING_QUERY_TIMESPAN_SECONDS.name());
+        }
+        else {
+            this.streamingQueryTimespanEnabled = true;
+        }
     }
 
     public String getDatabaseName() {
@@ -587,6 +627,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public String getCdcControlSchema() {
         return cdcControlSchema;
+    }
+
+    public int getStreamingQueryTimespanSeconds() {
+        return streamingQueryTimespanSeconds;
+    }
+
+    public boolean isStreamingQueryTimespanEnabled() {
+        return streamingQueryTimespanEnabled;
     }
 
     @Override
