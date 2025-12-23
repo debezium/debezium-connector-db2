@@ -111,15 +111,63 @@ public class Db2Connection extends JdbcConnection {
         }, "Maximum LSN query must return exactly one value"));
     }
 
+    public Lsn getMaxLsnForTimespan(final Lsn startLsn) throws SQLException {
+        final Lsn maxLsn = getMaxLsn();
+        if (maxLsn.compareTo(startLsn) <= 0) {
+            return maxLsn;
+        }
+        Lsn intervalEndLsn = null;
+        int timespanMultiplier = 1;
+        while (true) {
+            intervalEndLsn = getMaxLsnForTimespan(startLsn, timespanMultiplier);
+            if (intervalEndLsn != Lsn.NULL) {
+                if (maxLsn.compareTo(intervalEndLsn) >= 0) { // If we've gone past the maxLsn, just return that
+                    return maxLsn;
+                }
+                else {
+                    return intervalEndLsn;
+                }
+            }
+            timespanMultiplier++;
+        }
+    }
+
     /**
-     * Provides all changes recorded by the DB2 CDC capture process for a given table.
-     *
-     * @param tableId  - the requested table changes
-     * @param fromLsn  - closed lower bound of interval of changes to be provided
-     * @param toLsn    - closed upper bound of interval  of changes to be provided
-     * @param consumer - the change processor
-     * @throws SQLException
+     * @return the current largest log sequence number
      */
+    private Lsn getMaxLsnForTimespan(final Lsn startLsn, int timespanMultiplier) throws SQLException {
+        Lsn endLsnForStreaming = prepareQueryAndMap(
+                platform.getEndLsnForSecondsFromLsnQuery(),
+                statement -> {
+                    statement.setBytes(1, startLsn.getBinary());
+                    statement.setInt(2, (connectorConfig.getStreamingQueryTimespanSeconds() * timespanMultiplier));
+                    statement.setBytes(3, startLsn.getBinary());
+                    statement.setBytes(4, startLsn.getBinary());
+
+                },
+                rs -> {
+                    if (rs.next() == false) {
+                        return Lsn.NULL;
+                    }
+                    else {
+                        Timestamp ts = rs.getTimestamp(1);
+                        byte[] bytesLsn = rs.getBytes(2);
+                        LOGGER.info("End LSN representing timestamp {} for streaming is {}", ts, bytesLsn);
+                        return Lsn.valueOf(bytesLsn);
+                    }
+                });
+        return endLsnForStreaming;
+    }
+
+    /**
+    * Provides all changes recorded by the DB2 CDC capture process for a given table.
+    *
+    * @param tableId  - the requested table changes
+    * @param fromLsn  - closed lower bound of interval of changes to be provided
+    * @param toLsn    - closed upper bound of interval  of changes to be provided
+    * @param consumer - the change processor
+    * @throws SQLException
+    */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
         final String query = platform.getAllChangesForTableQuery().replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {
