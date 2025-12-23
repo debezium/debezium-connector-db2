@@ -1084,6 +1084,54 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
     }
 
+    @Test
+    public void shouldOnlyGetRecordsWithinDuration() throws Exception {
+        final int STARTING_ID = 100;
+        final int RECORDS_PER_TABLE = 10;
+        final int STREAMING_QUERY_DURATION_SECONDS = 120;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "DB2INST1.TABLEA")
+                .with(Db2ConnectorConfig.STREAMING_QUERY_TIMESPAN_SECONDS, STREAMING_QUERY_DURATION_SECONDS)
+                .build();
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        for (int i = STARTING_ID; i < (RECORDS_PER_TABLE + STARTING_ID); i++) {
+            logger.info("Inserting record with id {}", i);
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + i + ", 'b')");
+            logger.info("Inserted record with id {}", i);
+            connection.commit();
+        }
+        TestHelper.refreshAndWait(connection);
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        sourceRecords.print();
+        for (String topicName : sourceRecords.topics()) {
+            logger.info("Topic: {}", topicName);
+        }
+
+        assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")).hasSize(RECORDS_PER_TABLE);
+
+        int expectedKey = STARTING_ID;
+        for (SourceRecord record : sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")) {
+            logger.info("Expected key {}, found key {}", expectedKey, ((Struct) record.key()).get("ID"));
+            assertThat(((Struct) record.key()).get("ID").equals(expectedKey));
+            expectedKey++;
+        }
+
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
