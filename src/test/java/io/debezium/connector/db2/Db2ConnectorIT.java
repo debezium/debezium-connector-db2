@@ -1085,6 +1085,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1466")
     public void shouldOnlyGetRecordsWithinDuration() throws Exception {
         final int STARTING_ID = 100;
         final int RECORDS_PER_TABLE = 10;
