@@ -167,7 +167,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     tablesSlot.set(tables);
                     for (Db2ChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn.increment())) {
-                            LOGGER.info("Schema will be changed for {}", table);
+                            LOGGER.info(
+                                    "Schema will be changed for {} as its start LSN = {} and interval check is ({}, {})",
+                                    table, table.getStartLsn(), fromLsn, currentMaxLsn.increment());
                             schemaChangeCheckpoints.add(table);
                         }
                     }
