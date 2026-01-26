@@ -43,7 +43,8 @@ public class Db2DatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
-                        false),
+                        false,
+                        connectorConfig.getEventConvertingFailureHandlingMode()),
                 false, connectorConfig.getKeyMapper(), taskContext);
     }
 
