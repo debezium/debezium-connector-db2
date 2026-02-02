@@ -18,8 +18,10 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.db2.Db2OffsetContext.Loader;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -180,6 +182,24 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     @Override
     protected void aborted(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
         close(snapshotContext);
+    }
+
+    @Override
+    protected void postSnapshot() throws InterruptedException {
+        if (connectionPool != null) {
+            for (JdbcConnection conn : connectionPool) {
+                if (!jdbcConnection.equals(conn)) {
+                    try {
+                        if (conn.isConnected()) {
+                            conn.rollback();
+                        }
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException("Failed to rollback snapshot connection", e);
+                    }
+                }
+            }
+        }
     }
 
     private void close(SnapshotContext<Db2Partition, Db2OffsetContext> snapshotContext) {
