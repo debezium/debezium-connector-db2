@@ -98,8 +98,23 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning("db2_server", TestHelper.TEST_DATABASE);
+    }
+
+    @Override
+    protected String connector() {
+        return "db2_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_DATABASE;
+    }
+
+    @Override
     protected String getSingleKeyCollectionName() {
-        return "DB2INST1\\.DBZ1220";
+        return "DB2INST1.DBZ1220";
     }
 
     @Override
@@ -109,7 +124,7 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
 
     @Override
     protected String getMultipleSingleKeyCollectionNames() {
-        return String.join(",", List.of("DB2INST1\\.DBZ1220A", "DB2INST1\\.DBZ1220B", "DB2INST1\\.DBZ1220C", "DB2INST1\\.DBZ1220D"));
+        return String.join(",", List.of("DB2INST1.DBZ1220A", "DB2INST1.DBZ1220B", "DB2INST1.DBZ1220C", "DB2INST1.DBZ1220D"));
     }
 
     @Override
