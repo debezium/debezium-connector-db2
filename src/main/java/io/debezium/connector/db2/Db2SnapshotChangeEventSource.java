@@ -207,8 +207,10 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
      * Mutable context which is populated in the course of snapshotting.
      */
     private static class Db2SnapshotContext extends RelationalSnapshotContext<Db2Partition, Db2OffsetContext> {
-
-        private int isolationLevelBeforeStart;
+        // DBZ-9527
+        // DB2 didn't support transaction isolation level 0, so set the default level to 4 - TRANSACTION_REPEATABLE_READ
+        // refer: https://www.ibm.com/docs/en/db2/11.5.x?topic=applications-data-server-driver-jdbc-sqlj-isolation-levels
+        private int isolationLevelBeforeStart = 4;
         private Savepoint preSchemaSnapshotSavepoint;
 
         Db2SnapshotContext(Db2Partition partition, String catalogName, boolean onDemand) {
