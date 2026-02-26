@@ -405,6 +405,7 @@
             <plugin>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
+                <version>${version.debezium}</version>
             </plugin>
         </plugins>
         <resources>
