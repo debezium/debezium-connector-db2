@@ -123,6 +123,11 @@
                 <artifactId>debezium-storage-file</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connect-plugins</artifactId>
+                <version>${version.debezium}</version>
+            </dependency>
 
             <!-- Building -->
             <dependency>
@@ -180,6 +185,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-storage-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
         <!-- Db2 JDBC driver -->
         <!-- https://mvnrepository.com/artifact/com.ibm.db2/jcc -->
@@ -241,6 +250,12 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
