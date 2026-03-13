@@ -168,6 +168,7 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
         connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
         TestHelper.refreshAndWait(connection);
         TestHelper.enableTableCdc(connection, tableName);
+        TestHelper.waitForCDC();
     }
 
 }
