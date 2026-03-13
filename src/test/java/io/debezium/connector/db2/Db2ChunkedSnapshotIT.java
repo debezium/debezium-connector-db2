@@ -38,6 +38,8 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
+        TestHelper.enableDbCdc(connection);
+
         super.beforeEach();
     }
 
@@ -164,11 +166,9 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
     }
 
     private void enableCdc(String tableName) throws SQLException {
-        TestHelper.enableDbCdc(connection);
         connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
         TestHelper.refreshAndWait(connection);
         TestHelper.enableTableCdc(connection, tableName);
-        TestHelper.waitForCDC();
     }
 
 }
