@@ -14,11 +14,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,31 +126,37 @@ public class TestHelper {
      *             if anything unexpected fails
      */
     public static void enableDbCdc(Db2Connection connection) throws SQLException {
+        LOGGER.info("Enabling database CDC");
         connection.execute(ENABLE_DB_CDC);
-        Statement stmt = connection.connection().createStatement();
-        boolean isNotrunning = true;
-        int count = 0;
-        while (isNotrunning) {
-            ResultSet rs = stmt.executeQuery(STATUS_DB_CDC);
-            while (rs.next()) {
-                Clob clob = rs.getClob(1);
-                String test = clob.getSubString(1, (int) clob.length());
-                LOGGER.debug("Checking DB CDC status, got '{}'", test);
-                if (test.contains("is doing work")) {
-                    isNotrunning = false;
-                }
-                else {
-                    try {
-                        Thread.sleep(1000);
-                    }
-                    catch (InterruptedException e) {
-                    }
-                }
-                if (count++ > 30) {
-                    throw new SQLException("ASNCAP server did not start.");
-                }
+        try (Statement stmt = connection.connection().createStatement()) {
+            AtomicInteger count = new AtomicInteger();
+            try {
+                Awaitility.await()
+                        .atMost(5, TimeUnit.MINUTES)
+                        .pollInterval(Duration.ofSeconds(1))
+                        .until(() -> {
+                            count.incrementAndGet();
+                            try (ResultSet rs = stmt.executeQuery(STATUS_DB_CDC)) {
+                                if (rs.next()) {
+                                    Clob clob = rs.getClob(1);
+                                    String test = clob.getSubString(1, (int) clob.length());
+                                    LOGGER.debug("Checking DB CDC Status: '{}'", test);
+                                    if (test.contains("is doing work")) {
+                                        return true;
+                                    }
+                                    else if (test.contains("The command was not processed")) {
+                                        connection.execute(ENABLE_DB_CDC);
+                                    }
+                                }
+                                return false;
+                            }
+                        });
+            }
+            catch (ConditionTimeoutException e) {
+                throw new SQLException("ASNCAP server did not start in 5 minutes over %d attempts.".formatted(count.get()), e);
             }
         }
+        LOGGER.info("Database CDC enabled.");
     }
 
     /**
