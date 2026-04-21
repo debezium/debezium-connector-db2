@@ -508,6 +508,39 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                 return 0;
             });
 
+    public static final Field UPDATE_CAPTURE_TABLE_PURGE_IND = Field.create("update.capture.table.purge.ind")
+            .withDescription(
+                    "A switch to control if the connector instance is responsible for updating the purge table (usually " +
+                            "done by IBM Apply agent) which will cause the IBM Capture agent to purge read data from the change tables." +
+                            " default false.")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.MEDIUM)
+            .withWidth(Width.SHORT)
+            .withDefault(false);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PURGE_SET_NAME = Field.create("update.capture.table.purge.set.name")
+            .withDescription(
+                    "If set to update the purge table, this will identify the purge set name that should be used " +
+                            "when updating the table for this instance.")
+            .withType(Type.STRING)
+            .withImportance(Importance.MEDIUM)
+            .withWidth(Width.MEDIUM)
+            .withValidation((config, field, problems) -> {
+                String value = config.getString(field);
+                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
+                if (purgeInd && (value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is enabled, the set name must be " +
+                            "set to a non-empty string.");
+                    return 1;
+                }
+                else if (!purgeInd && !(value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is disabled, the set name may not " +
+                            "be set to a value ");
+                    return 1;
+                }
+                return 0;
+            });
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
 
@@ -564,6 +597,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final int streamingQueryTimespanSeconds;
     private final boolean streamingQueryTimespanEnabled;
 
+    private final boolean updateCaptureTablePurgeInd;
+    private final String updateCaptureTablePurgeSetName;
+
     public Db2ConnectorConfig(Configuration config) {
         super(
                 Db2Connector.class,
@@ -595,6 +631,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         else {
             this.streamingQueryTimespanEnabled = true;
         }
+        this.updateCaptureTablePurgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
+        this.updateCaptureTablePurgeSetName = config.getString(UPDATE_CAPTURE_TABLE_PURGE_SET_NAME);
     }
 
     public String getDatabaseName() {
@@ -635,6 +673,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public boolean isStreamingQueryTimespanEnabled() {
         return streamingQueryTimespanEnabled;
+    }
+
+    public boolean isUpdateCaptureTablePurgeInd() {
+        return updateCaptureTablePurgeInd;
+    }
+
+    public String getUpdateCaptureTablePurgeSetName() {
+        return updateCaptureTablePurgeSetName;
     }
 
     @Override

@@ -19,6 +19,7 @@ public class ZOsPlatform implements Db2PlatformAdapter {
     private final String getListOfCdcEnabledTables;
     private final String getListOfNewCdcEnabledTables;
     private final String getEndLsnForSecondsFromLsn;
+    private final String updatePurgeSetForPurgeSetName;
 
     public ZOsPlatform(Db2ConnectorConfig connectorConfig) {
 
@@ -83,6 +84,16 @@ public class ZOsPlatform implements Db2PlatformAdapter {
                 "ORDER BY " +
                 "       uow.IBMSNAP_COMMITSEQ DESC " +
                 "LIMIT 1";
+
+        this.updatePurgeSetForPurgeSetName = "" +
+                "UPDATE " + connectorConfig.getCdcControlSchema() + ".IBMSNAP_PURGE_SET " +
+                "SET " +
+                "  SYNCHPOINT = ?, " +
+                "  SYNCHTIME = ? " +
+                "WHERE " +
+                "   APPLY_QUAL = ? AND " +
+                "   SET_NAME = ? AND " +
+                "   TARGET_SERVER = ?;";
     }
 
     @Override
@@ -108,5 +119,10 @@ public class ZOsPlatform implements Db2PlatformAdapter {
     @Override
     public String getEndLsnForSecondsFromLsnQuery() {
         return getEndLsnForSecondsFromLsn;
+    }
+
+    @Override
+    public String getUpdatePurgeSetForPurgeSetName() {
+        return updatePurgeSetForPurgeSetName;
     }
 }
