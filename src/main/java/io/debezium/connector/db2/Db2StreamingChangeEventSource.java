@@ -292,13 +292,19 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         }
                     });
                     lastProcessedPosition = TxLogPosition.valueOf(currentMaxLsn);
+                    LOGGER.info("Last processed position is {}", lastProcessedPosition);
+                    if(connectorConfig.isUpdateCaptureTablePurgeInd()){
+                        LOGGER.info("Updating the purge point for the capture table");
+                        dataConnection.updatePurgePointForSubSet(currentMaxLsn, Instant.now(),
+                                "applyQual", "setName", "targetServer"); //TODO: See if instant.now will be ok, fix the other hardcodes
+                        LOGGER.info("Updated the purge point for the capture table");
+                    }
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
-
                 handlePause(context);
             }
         }
