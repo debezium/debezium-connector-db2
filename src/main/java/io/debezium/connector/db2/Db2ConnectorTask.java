@@ -100,8 +100,6 @@ public class Db2ConnectorTask extends BaseSourceTask<Db2Partition, Db2OffsetCont
         }
 
         final Db2ValueConverters valueConverters = new Db2ValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode());
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         this.schema = new Db2DatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicNamingStrategy, dataConnection,
                 connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class), taskContext);
