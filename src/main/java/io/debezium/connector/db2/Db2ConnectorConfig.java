@@ -540,6 +540,58 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                 }
                 return 0;
             });
+    public static final Field UPDATE_CAPTURE_TABLE_PURGE_MIN_INTERVAL = Field.create("update.capture.table.purge.min.interval.ms")
+            .withDescription(
+                    "The minimum number of milliseconds between the connector instance's update of the purge point for " +
+                            "the subscription set.  Default is 10000 (10 seconds).")
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.SHORT)
+            .withDefault(10000);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PURGE_APPLY_QUAL = Field.create("update.capture.table.purge.apply.qual")
+            .withDescription(
+                    "The apply_qual name that represents the apply agent (this instance) to the subscription set.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.MEDIUM)
+            .withValidation((config, field, problems) -> {
+                String value = config.getString(field);
+                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
+                if (purgeInd && (value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is enabled, the apply_qual name must be " +
+                            "set to a non-empty string.");
+                    return 1;
+                }
+                else if (!purgeInd && !(value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is disabled, the apply_qual name may not " +
+                            "be set to a value ");
+                    return 1;
+                }
+                return 0;
+            });
+
+    public static final Field UPDATE_CAPTURE_TABLE_PURGE_TARGET_SERVER = Field.create("update.capture.table.purge.target.server")
+            .withDescription(
+                    "The target_server name that represents the apply agent's target (where the data is going) for the subscription set.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.MEDIUM)
+            .withValidation((config, field, problems) -> {
+                String value = config.getString(field);
+                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
+                if (purgeInd && (value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is enabled, the target_server name must be " +
+                            "set to a non-empty string.");
+                    return 1;
+                }
+                else if (!purgeInd && !(value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if purge update is disabled, the target_server name may not " +
+                            "be set to a value ");
+                    return 1;
+                }
+                return 0;
+            });
 
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
@@ -599,6 +651,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     private final boolean updateCaptureTablePurgeInd;
     private final String updateCaptureTablePurgeSetName;
+    private final int updateCaptureTablePurgeMinIntervalMs;
+    private final String updateCaptureTablePurgeApplyQual;
+    private final String updateCaptureTablePurgeTargetServer;
 
     public Db2ConnectorConfig(Configuration config) {
         super(
@@ -633,6 +688,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         }
         this.updateCaptureTablePurgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
         this.updateCaptureTablePurgeSetName = config.getString(UPDATE_CAPTURE_TABLE_PURGE_SET_NAME);
+        this.updateCaptureTablePurgeMinIntervalMs = config.getInteger(UPDATE_CAPTURE_TABLE_PURGE_MIN_INTERVAL);
+        this.updateCaptureTablePurgeApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PURGE_APPLY_QUAL);
+        this.updateCaptureTablePurgeTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PURGE_TARGET_SERVER);
     }
 
     public String getDatabaseName() {
@@ -679,8 +737,20 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         return updateCaptureTablePurgeInd;
     }
 
+    public int getUpdateCaptureTablePurgeMinIntervalMs() {
+        return updateCaptureTablePurgeMinIntervalMs;
+    }
+
     public String getUpdateCaptureTablePurgeSetName() {
         return updateCaptureTablePurgeSetName;
+    }
+
+    public String getUpdateCaptureTablePurgeApplyQual() {
+        return updateCaptureTablePurgeApplyQual;
+    }
+
+    public String getUpdateCaptureTablePurgeTargetServer() {
+        return updateCaptureTablePurgeTargetServer;
     }
 
     @Override
