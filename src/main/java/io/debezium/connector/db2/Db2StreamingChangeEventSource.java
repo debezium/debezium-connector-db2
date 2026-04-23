@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -88,7 +87,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Duration pollInterval;
     private final Db2ConnectorConfig connectorConfig;
     private Db2OffsetContext effectiveOffsetContext;
-    private Instant lastPurgeUpdateInstant = Instant.MIN;
+    private Instant lastPruneUpdateInstant = Instant.EPOCH;
 
     private final SnapshotterService snapshotterService;
 
@@ -296,7 +295,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     });
                     lastProcessedPosition = TxLogPosition.valueOf(currentMaxLsn);
                     LOGGER.info("Last processed position is {}", lastProcessedPosition);
-                    handleSubSetPurgeUpdate(currentMaxLsn);
+                    handleSubSetPruneUpdate(currentMaxLsn);
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
@@ -311,42 +310,38 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
-    private void handleSubSetPurgeUpdate(Lsn currentMaxLsn) throws SQLException {
-        if(connectorConfig.isUpdateCaptureTablePurgeInd()){
-            // Calculate duration since last purge update
-            final Duration durationSinceLastPurgeUpdate = Duration.between(lastPurgeUpdateInstant, Instant.now());
-            final Duration durationOfMinimumInterval = Duration.of(connectorConfig.getUpdateCaptureTablePurgeMinIntervalMs(), ChronoUnit.MILLIS);
-            if(durationSinceLastPurgeUpdate.compareTo(durationOfMinimumInterval) >= 0){
-                LOGGER.info("Updating the purge point for the capture table as it has been {} since " +
-                        "the last purge update at {} and the minimum interval is {}.",
-                        durationSinceLastPurgeUpdate.toMillis(),
-                        lastPurgeUpdateInstant.toString(),
-                        durationOfMinimumInterval.toMillis()
-                );
-                lastPurgeUpdateInstant = Instant.now();
+    private void handleSubSetPruneUpdate(Lsn currentMaxLsn) throws SQLException {
+        if (connectorConfig.isUpdateCaptureTablePruneInd()) {
+            // Calculate duration since last prune update
+            final Duration durationSinceLastPruneUpdate = Duration.between(lastPruneUpdateInstant, Instant.now());
+            final Duration durationOfMinimumInterval = Duration.of(connectorConfig.getUpdateCaptureTablePruneMinIntervalMs(), ChronoUnit.MILLIS);
+            if (durationSinceLastPruneUpdate.compareTo(durationOfMinimumInterval) >= 0) {
+                LOGGER.info("Updating the prune point for the capture table as it has been {} since " +
+                        "the last prune update at {} and the minimum interval is {}.",
+                        durationSinceLastPruneUpdate.toMillis(),
+                        lastPruneUpdateInstant.toString(),
+                        durationOfMinimumInterval.toMillis());
+                lastPruneUpdateInstant = Instant.now();
                 final Instant currentMaxLsnInstant = dataConnection.timestampOfLsn(currentMaxLsn);
-                LOGGER.info("Updating the purge point for the capture table to the time of {} and the lsn of {}.",
+                LOGGER.info("Updating the prune point for the capture table to the time of {} and the lsn of {}.",
                         currentMaxLsnInstant.toString(),
                         currentMaxLsn);
 
-                dataConnection.updatePurgePointForSubSet(
+                dataConnection.updatePrunePointForSubSet(
                         currentMaxLsn,
                         currentMaxLsnInstant,
-                        connectorConfig.getUpdateCaptureTablePurgeApplyQual(),
-                        connectorConfig.getUpdateCaptureTablePurgeSetName(),
-                        connectorConfig.getUpdateCaptureTablePurgeTargetServer());
-                LOGGER.info("Updated the purge point for the capture table");
+                        connectorConfig.getUpdateCaptureTablePruneApplyQual(),
+                        connectorConfig.getUpdateCaptureTablePruneSetName(),
+                        connectorConfig.getUpdateCaptureTablePruneTargetServer());
+                LOGGER.info("Updated the prune point for the capture table");
             }
-            else{
-                LOGGER.info("Skipping updating the purge point for the capture table as it has been {} ms since " +
-                        "the last purge update at {} and the minimum interval is {} ms.",
-                        durationSinceLastPurgeUpdate.toMillis(),
-                        lastPurgeUpdateInstant.toString(),
-                        durationOfMinimumInterval.toMillis()
-                );
+            else {
+                LOGGER.info("Skipping updating the prune point for the capture table as it has been {} ms since " +
+                        "the last prune update at {} and the minimum interval is {} ms.",
+                        durationSinceLastPruneUpdate.toMillis(),
+                        lastPruneUpdateInstant.toString(),
+                        durationOfMinimumInterval.toMillis());
             }
-
-
         }
     }
 

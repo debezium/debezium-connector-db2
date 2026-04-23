@@ -508,90 +508,60 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                 return 0;
             });
 
-    public static final Field UPDATE_CAPTURE_TABLE_PURGE_IND = Field.create("update.capture.table.purge.ind")
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_IND = Field.create("update.capture.table.prune.ind")
             .withDescription(
-                    "A switch to control if the connector instance is responsible for updating the purge table (usually " +
-                            "done by IBM Apply agent) which will cause the IBM Capture agent to purge read data from the change tables." +
+                    "A switch to control if the connector instance is responsible for updating the prune table (usually " +
+                            "done by IBM Apply agent) which will cause the IBM Capture agent to prune read data from the change tables." +
                             " default false.")
             .withType(Type.BOOLEAN)
             .withImportance(Importance.MEDIUM)
             .withWidth(Width.SHORT)
             .withDefault(false);
 
-    public static final Field UPDATE_CAPTURE_TABLE_PURGE_SET_NAME = Field.create("update.capture.table.purge.set.name")
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME = Field.create("update.capture.table.prune.set.name")
             .withDescription(
-                    "If set to update the purge table, this will identify the purge set name that should be used " +
+                    "If set to update the prune table, this will identify the prune set name that should be used " +
                             "when updating the table for this instance.")
             .withType(Type.STRING)
             .withImportance(Importance.MEDIUM)
             .withWidth(Width.MEDIUM)
             .withValidation((config, field, problems) -> {
                 String value = config.getString(field);
-                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
-                if (purgeInd && (value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is enabled, the set name must be " +
+                boolean pruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
+                if (pruneInd && (value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if prune update is enabled, the set name must be " +
                             "set to a non-empty string.");
                     return 1;
                 }
-                else if (!purgeInd && !(value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is disabled, the set name may not " +
+                else if (!pruneInd && !(value == null || value.isEmpty())) {
+                    problems.accept(field, value, "The if prune update is disabled, the set name may not " +
                             "be set to a value ");
                     return 1;
                 }
                 return 0;
             });
-    public static final Field UPDATE_CAPTURE_TABLE_PURGE_MIN_INTERVAL = Field.create("update.capture.table.purge.min.interval.ms")
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL = Field.create("update.capture.table.prune.min.interval.ms")
             .withDescription(
-                    "The minimum number of milliseconds between the connector instance's update of the purge point for " +
+                    "The minimum number of milliseconds between the connector instance's update of the prune point for " +
                             "the subscription set.  Default is 10000 (10 seconds).")
             .withType(Type.INT)
             .withImportance(Importance.LOW)
             .withWidth(Width.SHORT)
             .withDefault(10000);
 
-    public static final Field UPDATE_CAPTURE_TABLE_PURGE_APPLY_QUAL = Field.create("update.capture.table.purge.apply.qual")
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL = Field.create("update.capture.table.prune.apply.qual")
             .withDescription(
                     "The apply_qual name that represents the apply agent (this instance) to the subscription set.")
             .withType(Type.STRING)
             .withImportance(Importance.LOW)
-            .withWidth(Width.MEDIUM)
-            .withValidation((config, field, problems) -> {
-                String value = config.getString(field);
-                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
-                if (purgeInd && (value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is enabled, the apply_qual name must be " +
-                            "set to a non-empty string.");
-                    return 1;
-                }
-                else if (!purgeInd && !(value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is disabled, the apply_qual name may not " +
-                            "be set to a value ");
-                    return 1;
-                }
-                return 0;
-            });
+            .withWidth(Width.MEDIUM);
 
-    public static final Field UPDATE_CAPTURE_TABLE_PURGE_TARGET_SERVER = Field.create("update.capture.table.purge.target.server")
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER = Field.create("update.capture.table.prune.target.server")
             .withDescription(
                     "The target_server name that represents the apply agent's target (where the data is going) for the subscription set.")
             .withType(Type.STRING)
             .withImportance(Importance.LOW)
-            .withWidth(Width.MEDIUM)
-            .withValidation((config, field, problems) -> {
-                String value = config.getString(field);
-                boolean purgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
-                if (purgeInd && (value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is enabled, the target_server name must be " +
-                            "set to a non-empty string.");
-                    return 1;
-                }
-                else if (!purgeInd && !(value == null || value.isEmpty())) {
-                    problems.accept(field, value, "The if purge update is disabled, the target_server name may not " +
-                            "be set to a value ");
-                    return 1;
-                }
-                return 0;
-            });
+            .withWidth(Width.MEDIUM);
 
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
@@ -649,11 +619,11 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final int streamingQueryTimespanSeconds;
     private final boolean streamingQueryTimespanEnabled;
 
-    private final boolean updateCaptureTablePurgeInd;
-    private final String updateCaptureTablePurgeSetName;
-    private final int updateCaptureTablePurgeMinIntervalMs;
-    private final String updateCaptureTablePurgeApplyQual;
-    private final String updateCaptureTablePurgeTargetServer;
+    private final boolean updateCaptureTablePruneInd;
+    private final String updateCaptureTablePruneSetName;
+    private final int updateCaptureTablePruneMinIntervalMs;
+    private final String updateCaptureTablePruneApplyQual;
+    private final String updateCaptureTablePruneTargetServer;
 
     public Db2ConnectorConfig(Configuration config) {
         super(
@@ -686,11 +656,36 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         else {
             this.streamingQueryTimespanEnabled = true;
         }
-        this.updateCaptureTablePurgeInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PURGE_IND);
-        this.updateCaptureTablePurgeSetName = config.getString(UPDATE_CAPTURE_TABLE_PURGE_SET_NAME);
-        this.updateCaptureTablePurgeMinIntervalMs = config.getInteger(UPDATE_CAPTURE_TABLE_PURGE_MIN_INTERVAL);
-        this.updateCaptureTablePurgeApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PURGE_APPLY_QUAL);
-        this.updateCaptureTablePurgeTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PURGE_TARGET_SERVER);
+        this.updateCaptureTablePruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
+        this.updateCaptureTablePruneSetName = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME);
+        this.updateCaptureTablePruneMinIntervalMs = config.getInteger(UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL);
+        this.updateCaptureTablePruneApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL);
+        this.updateCaptureTablePruneTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER);
+        if(this.updateCaptureTablePruneInd){
+            if (this.updateCaptureTablePruneSetName == null || this.updateCaptureTablePruneSetName.isEmpty()) {
+                throw new ConfigException("The if prune update is enabled, the pruneSetName must be " +
+                        "set to a non-empty string.");
+            }
+            else if (this.updateCaptureTablePruneApplyQual == null || this.updateCaptureTablePruneApplyQual.isEmpty()) {
+                throw new ConfigException("The if prune update is enabled, the pruneApplyQual must be " +
+                        "set to a non-empty string.");
+            }
+            else if (this.updateCaptureTablePruneTargetServer == null || this.updateCaptureTablePruneTargetServer.isEmpty()) {
+                throw new ConfigException("The if prune update is enabled, the targetServer must be " +
+                        "set to a non-empty string.");
+            }
+        }
+        else {
+            if (this.updateCaptureTablePruneSetName != null) {
+                throw new ConfigException("The if prune update is disabled, the pruneSetName name may not be set to a value.");
+            }
+            if (this.updateCaptureTablePruneApplyQual != null) {
+                throw new ConfigException("The if prune update is disabled, the pruneApplyQual name may not be set to a value.");
+            }
+            if (this.updateCaptureTablePruneTargetServer != null) {
+                throw new ConfigException("The if prune update is disabled, the pruneTargetServer name may not be set to a value.");
+            }
+        }
     }
 
     public String getDatabaseName() {
@@ -733,24 +728,24 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         return streamingQueryTimespanEnabled;
     }
 
-    public boolean isUpdateCaptureTablePurgeInd() {
-        return updateCaptureTablePurgeInd;
+    public boolean isUpdateCaptureTablePruneInd() {
+        return updateCaptureTablePruneInd;
     }
 
-    public int getUpdateCaptureTablePurgeMinIntervalMs() {
-        return updateCaptureTablePurgeMinIntervalMs;
+    public int getUpdateCaptureTablePruneMinIntervalMs() {
+        return updateCaptureTablePruneMinIntervalMs;
     }
 
-    public String getUpdateCaptureTablePurgeSetName() {
-        return updateCaptureTablePurgeSetName;
+    public String getUpdateCaptureTablePruneSetName() {
+        return updateCaptureTablePruneSetName;
     }
 
-    public String getUpdateCaptureTablePurgeApplyQual() {
-        return updateCaptureTablePurgeApplyQual;
+    public String getUpdateCaptureTablePruneApplyQual() {
+        return updateCaptureTablePruneApplyQual;
     }
 
-    public String getUpdateCaptureTablePurgeTargetServer() {
-        return updateCaptureTablePurgeTargetServer;
+    public String getUpdateCaptureTablePruneTargetServer() {
+        return updateCaptureTablePruneTargetServer;
     }
 
     @Override

@@ -426,25 +426,25 @@ public class Db2Connection extends JdbcConnection {
     /**
      * Updates the timestamp and LSN of the current point the connector has produced for.
      *
-     * @param synchPointLSN     - the last LSN that can be purged
-     * @param synchInstant      - the last Instant that can be purged
+     * @param synchPointLSN     - the last LSN that can be pruned
+     * @param synchInstant      - the last Instant that can be pruned
      * @param applyQual         - the Apply qualifier that identifies which Apply program is processing this set.
      * @param setName           - the name of the subscription set that this update applies to.
      * @param targetServer      - the server name where target tables or views for this set reside.
      */
-    public void updatePurgePointForSubSet(final Lsn synchPointLSN, final Instant synchInstant, final String applyQual,
-                                          final String setName, final String targetServer) throws SQLException {
-        final String updateSql = platform.getUpdatePurgeSetForPurgeSetName();
+    public void updatePrunePointForSubSet(final Lsn synchPointLSN, final Instant synchInstant, final String applyQual,
+                                          final String setName, final String targetServer)
+            throws SQLException {
+        final String updateSql = platform.getUpdatePruneSetForPruneSetName();
 
-        LOGGER.trace("Updating purge point for set {} to LSN {} and timestamp {}", setName, synchPointLSN, synchInstant);
-        JdbcConnection updateConnection =
-                prepareUpdate(updateSql, ps -> {
-                    ps.setTimestamp(1, Timestamp.from(synchInstant));
-                    ps.setBytes(2, synchPointLSN.getBinary());
-                    ps.setString(3, applyQual);
-                    ps.setString(4, setName);
-                    ps.setString(5, targetServer);
-                });
+        LOGGER.trace("Updating prune point for set {} to LSN {} and timestamp {}", setName, synchPointLSN, synchInstant);
+        JdbcConnection updateConnection = prepareUpdate(updateSql, ps -> {
+            ps.setBytes(1, synchPointLSN.getBinary());
+            ps.setTimestamp(2, Timestamp.from(synchInstant));
+            ps.setString(3, applyQual);
+            ps.setString(4, setName);
+            ps.setString(5, targetServer);
+        });
         updateConnection.commit();
     }
 
