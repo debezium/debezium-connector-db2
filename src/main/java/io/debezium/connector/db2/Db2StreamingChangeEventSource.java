@@ -323,12 +323,18 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         durationOfMinimumInterval.toMillis());
                 lastPruneUpdateInstant = Instant.now();
                 final Instant currentMaxLsnInstant = dataConnection.timestampOfLsn(currentMaxLsn);
+                Lsn lsnToApply = currentMaxLsn;
+                if (connectorConfig.isUpdateCaptureTablePruneLsnDecrement()) {
+                    final Lsn decrementedLsn = currentMaxLsn.decrement();
+                    LOGGER.info("Decrementing the prune point for the capture table by 1 LSN \nBefore: {} \nAfter: {}", lsnToApply, decrementedLsn);
+                    lsnToApply = decrementedLsn;
+                }
                 LOGGER.info("Updating the prune point for the capture table to the time of {} and the lsn of {}.",
                         currentMaxLsnInstant.toString(),
-                        currentMaxLsn);
+                        lsnToApply);
 
                 dataConnection.updatePrunePointForSubSet(
-                        currentMaxLsn,
+                        lsnToApply,
                         currentMaxLsnInstant,
                         connectorConfig.getUpdateCaptureTablePruneApplyQual(),
                         connectorConfig.getUpdateCaptureTablePruneSetName(),
