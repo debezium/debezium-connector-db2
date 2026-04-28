@@ -179,4 +179,17 @@ public class Lsn implements Comparable<Lsn>, Nullable {
         }
         return Lsn.valueOf(lsnByteArray);
     }
+
+    /**
+     * Return the prior LSN in sequence
+     */
+    public Lsn decrement() {
+        final BigInteger bi = new BigInteger(this.toString().replace(":", ""), 16).subtract(BigInteger.ONE);
+        final byte[] biByteArray = bi.toByteArray();
+        final byte[] lsnByteArray = new byte[16];
+        for (int i = 0; i < biByteArray.length; i++) {
+            lsnByteArray[i + 16 - biByteArray.length] = biByteArray[i];
+        }
+        return Lsn.valueOf(lsnByteArray);
+    }
 }
