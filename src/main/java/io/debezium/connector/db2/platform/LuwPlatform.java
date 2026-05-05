@@ -21,6 +21,8 @@ public class LuwPlatform implements Db2PlatformAdapter {
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private final String getEndLsnForSecondsFromLsn;
     private final String updatePruneSetForPruneSetName;
+    private final String updatePruneSetProcedureCall;
+    private static final String PROCEDURE_NAME_PLACEHOLDER = "{{PROCEDURE_NAME}}";
 
     public LuwPlatform(Db2ConnectorConfig connectorConfig) {
 
@@ -85,8 +87,21 @@ public class LuwPlatform implements Db2PlatformAdapter {
                 "   APPLY_QUAL = ? AND " +
                 "   SET_NAME = ? AND " +
                 "   TARGET_SERVER = ?;";
-    }
 
+    /*
+            Implementation must have this interface:
+                IN P_SYNCHPOINT VARCHAR () For BIT DATA(16),
+                IN P_SYNCHTIME TIMESTAMP,
+                IN P_APPLY_QUAL VARCHAR(18),
+                IN P_SET_NAME VARCHAR(18),
+                IN P_TARGET_SERVER VARCHAR(18),
+                OUT P_UPDATED_COUNT INT
+         */
+        this.updatePruneSetProcedureCall = "" +
+                "CALL " +
+                PROCEDURE_NAME_PLACEHOLDER +
+                "(?, ?, ?, ?, ?, ?)";  // 6 ? placeholders: positions 1-5 IN, 6 OUT
+    }
     @Override
     public String getMaxLsnQuery() {
         return getMaxLsn;
@@ -116,5 +131,8 @@ public class LuwPlatform implements Db2PlatformAdapter {
     public String getUpdatePruneSetForPruneSetName() {
         return updatePruneSetForPruneSetName;
     }
-
+    @Override
+    public String getUpdatePruneSetProcedureCall(final String procedureName) {
+        return updatePruneSetProcedureCall.replace(PROCEDURE_NAME_PLACEHOLDER, procedureName);
+    }
 }

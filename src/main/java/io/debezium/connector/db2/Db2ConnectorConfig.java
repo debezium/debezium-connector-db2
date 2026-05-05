@@ -572,6 +572,13 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .withImportance(Importance.LOW)
             .withWidth(Width.MEDIUM);
 
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME = Field.create("update.capture.table.prune.procedure.override.name")
+            .withDescription(
+                    "The name of a prepared statement in the database that will be used instead of direct sql to allow for DBA control of the update code where needed.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.LONG);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
 
@@ -636,6 +643,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final String updateCaptureTablePruneApplyQual;
     private final String updateCaptureTablePruneTargetServer;
 
+    private final String updateCaptureTablePruneProcedureOverrideName;
+
     public Db2ConnectorConfig(Configuration config) {
         super(
                 Db2Connector.class,
@@ -673,6 +682,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.updateCaptureTablePruneLsnDecrement = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT);
         this.updateCaptureTablePruneApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL);
         this.updateCaptureTablePruneTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER);
+        this.updateCaptureTablePruneProcedureOverrideName = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME);
         if (this.updateCaptureTablePruneInd) {
             if (this.updateCaptureTablePruneSetName == null || this.updateCaptureTablePruneSetName.isEmpty()) {
                 throw new ConfigException("The if prune update is enabled, the pruneSetName must be " +
@@ -762,6 +772,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public String getUpdateCaptureTablePruneTargetServer() {
         return updateCaptureTablePruneTargetServer;
+    }
+
+    public String getUpdateCaptureTablePruneProcedureOverrideName() {
+        return updateCaptureTablePruneProcedureOverrideName;
     }
 
     @Override

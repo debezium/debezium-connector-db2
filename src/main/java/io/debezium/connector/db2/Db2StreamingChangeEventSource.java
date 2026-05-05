@@ -232,12 +232,18 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                         Db2ConnectorConfig.Z_STOP_LSN_IGNORE.name(),
                                         tableWithSmallestLsn.getChangeTable().getStopLsn());
                             }
-                            if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
-                                    tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
-                                LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
-                                        tableWithSmallestLsn.getChangePosition());
-                                tableWithSmallestLsn.next();
-                                continue;
+                            if (connectorConfig.isUpdateCaptureTablePruneInd()) { // The use of stop lsn doesn't seem to make sense
+                                LOGGER.info("Bypassing check for STOP_LSN against change LSN (taken from IBMSNAP_REGISTER), " +
+                                        "a value that can't be null when using purge, and will quickly be too old to pass this test.");
+                            }
+                            else {
+                                if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
+                                        tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
+                                    LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
+                                            tableWithSmallestLsn.getChangePosition());
+                                    tableWithSmallestLsn.next();
+                                    continue;
+                                }
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
@@ -294,16 +300,17 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         }
                     });
                     lastProcessedPosition = TxLogPosition.valueOf(currentMaxLsn);
-                    LOGGER.info("Last processed position is {}", lastProcessedPosition);
-                    handleSubSetPruneUpdate(currentMaxLsn);
+
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
+                LOGGER.info("Last processed position is {}", lastProcessedPosition);
+                handleSubSetPruneUpdate(currentMaxLsn);
                 handlePause(context);
-            }
+            } // End Running While Loop
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
