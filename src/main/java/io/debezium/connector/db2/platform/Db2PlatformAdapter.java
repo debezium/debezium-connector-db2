@@ -23,4 +23,6 @@ public interface Db2PlatformAdapter {
     String getListOfNewCdcEnabledTablesQuery();
 
     String getUpdatePruneSetForPruneSetName();
+
+    String getUpdatePruneSetProcedureCall(final String procedureName);
 }
