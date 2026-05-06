@@ -1133,6 +1133,74 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-1843")
+    public void shouldUpdatePruneSetTable() throws Exception {
+        final String targetTableSchemaName = "DB2INST1";
+        final String targetTableName = "TABLEA";
+        final String applyQual = "AQ00";
+        final String setName = "SET_NAME";
+        final String targetSystem = "TARGET_SYSTEM";
+        final String controlTableSchemaName = "ASNCDC";
+        final String pruneSetTableName = controlTableSchemaName + ".IBMSNAP_PRUNE_SET";
+        final String pruneCtlTableName = controlTableSchemaName + ".IBMSNAP_PRUNECTL";
+        final String capParamsTableName = controlTableSchemaName + ".IBMSNAP_CAPPARAMS";
+        final String lsnZeroString = "0x00000000000000000000000000000000";
+        final String epochTimestamp = "1970-01-01 00:00:00.00";
+
+        final int STARTING_ID = 100;
+        final int RECORDS_PER_TABLE = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_IND, true)
+                .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL, applyQual)
+                .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME, setName)
+                .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER, targetSystem)
+                .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT, true)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, targetTableSchemaName + "." + targetTableName)
+                .build();
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        connection.execute("INSERT INTO " + pruneCtlTableName + " " +
+                        "(           TARGET_SERVER,          TARGET_OWNER,                    TARGET_TABLE,       SYNCHTIME, SYNCHPOINT, SOURCE_OWNER, SOURCE_TABLE, SOURCE_VIEW_QUAL, APPLY_QUAL, SET_NAME, CNTL_SERVER, TARGET_STRUCTURE, CNTL_ALIAS, PHYS_CHANGE_OWNER, PHYS_CHANGE_TABLE, MAP_ID)\n" +
+                        "VALUES('" + targetSystem + "', '" + targetTableSchemaName + "', '" + targetTableName + "', '2026-04-29 11:22:48.825', 0x00000000000182EA75EA000000000000, 'DSN81310', 'EMP', 0, 'AQ00              ', 'SET01             ', 'DBD1LOC           ', 8, 'DBD1LOC ', 'DSN81310', 'CDEMP', '0');)
+        connection.execute("UPDATE ASNCDC.IBMSNAP_PRUNE_SET")
+        TestHelper.enableDbCdc(connection);
+
+        TestHelper.refreshAndWait(connection);
+
+        for (int i = STARTING_ID; i < (RECORDS_PER_TABLE + STARTING_ID); i++) {
+            logger.info("Inserting record with id {}", i);
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + i + ", 'b')");
+            logger.info("Inserted record with id {}", i);
+            connection.commit();
+        }
+        TestHelper.refreshAndWait(connection);
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        sourceRecords.print();
+        for (String topicName : sourceRecords.topics()) {
+            logger.info("Topic: {}", topicName);
+        }
+
+        assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")).hasSize(RECORDS_PER_TABLE);
+
+        int expectedKey = STARTING_ID;
+        for (SourceRecord record : sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")) {
+            logger.info("Expected key {}, found key {}", expectedKey, ((Struct) record.key()).get("ID"));
+            assertThat(((Struct) record.key()).get("ID").equals(expectedKey));
+            expectedKey++;
+        }
+
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
