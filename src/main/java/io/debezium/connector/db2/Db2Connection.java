@@ -435,28 +435,41 @@ public class Db2Connection extends JdbcConnection {
 
         LOGGER.trace("Updating prune point for set {} to LSN {} and timestamp {}", setName, synchPointLSN, synchInstant);
 
-        if(connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName() != null){
+        if (connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName() != null) {
             LOGGER.info("Using database procedure for prune update as configuration specifies to use {}",
                     connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName());
-                /*
-                    Implementation must have this interface:
-                    IN P_SYNCHPOINT VARCHAR () For BIT DATA(16),
-                    IN P_SYNCHTIME TIMESTAMP,
-                    IN P_APPLY_QUAL VARCHAR(18),
-                    IN P_SET_NAME VARCHAR(18),
-                    IN P_TARGET_SERVER VARCHAR(18),
-                    OUT P_UPDATED_COUNT INT
-                */
+            /*
+             * Implementation must have this interface:
+             * IN P_SYNCHPOINT VARCHAR () For BIT DATA(16),
+             * IN P_SYNCHTIME TIMESTAMP,
+             * IN P_APPLY_QUAL VARCHAR(18),
+             * IN P_SET_NAME VARCHAR(18),
+             * IN P_TARGET_SERVER VARCHAR(18),
+             * OUT P_UPDATED_COUNT INT
+             */
             final CallableStatement cs = connection().prepareCall(
                     platform.getUpdatePruneSetProcedureCall(
-                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()
-                    )
-            );
-            cs.setBytes(    1, synchPointLSN.getBinary());
-            cs.setTimestamp(2, Timestamp.from(synchInstant));
-            cs.setString(   3, applyQual);
-            cs.setString(   4, setName);
-            cs.setString(   5, targetServer);
+                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()));
+
+            cs.setBytes("P_SYNCHPOINT", synchPointLSN.getBinary());
+            cs.setTimestamp("P_SYNCHTIME", Timestamp.from(synchInstant));
+            cs.setString("P_APPLY_QUAL", applyQual);
+            cs.setString("P_SET_NAME", setName);
+            cs.setString("P_TARGET_SERVER", targetServer);
+            cs.registerOutParameter("P_UPDATED_COUNT", Types.INTEGER);
+            cs.execute();
+            final int rowsUpdated = cs.getInt("P_UPDATED_COUNT");
+            cs.getConnection().commit();
+            cs.close();
+            if (rowsUpdated == 0) {
+                LOGGER.error("No rows updated when using the provided procedure for set {}, qual {}, targetServer {} to LSN {} and timestamp {} ",
+                        setName, applyQual, targetServer, synchPointLSN, synchInstant);
+            }
+            else if (rowsUpdated > 1) {
+                LOGGER.error("More than one row updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}. " +
+                        "Number updated was {} when using the provided procedure",
+                        setName, applyQual, targetServer, synchPointLSN, synchInstant, rowsUpdated);
+            }
         }
         else {
             int rowsUpdated = prepareUpdateExecuteCommit(updateSql, ps -> {
@@ -469,9 +482,10 @@ public class Db2Connection extends JdbcConnection {
             if (rowsUpdated == 0) {
                 LOGGER.error("No rows updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}",
                         setName, applyQual, targetServer, synchPointLSN, synchInstant);
-            } else if (rowsUpdated > 1) {
+            }
+            else if (rowsUpdated > 1) {
                 LOGGER.error("More than one row updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}.  " +
-                                "Number updated was {}",
+                        "Number updated was {}",
                         setName, applyQual, targetServer, synchPointLSN, synchInstant, rowsUpdated);
             }
         }

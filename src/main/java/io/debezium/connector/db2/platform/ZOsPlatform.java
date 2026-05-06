@@ -98,19 +98,18 @@ public class ZOsPlatform implements Db2PlatformAdapter {
                 "   TARGET_SERVER = ?;";
 
         /*
-            Implementation must have this interface:
-                IN P_SYNCHPOINT VARCHAR () For BIT DATA(16),
-                IN P_SYNCHTIME TIMESTAMP,
-                IN P_APPLY_QUAL VARCHAR(18),
-                IN P_SET_NAME VARCHAR(18),
-                IN P_TARGET_SERVER VARCHAR(18),
-                OUT P_UPDATED_COUNT INT
+         * Implementation must have this interface:
+         * IN P_SYNCHPOINT VARCHAR () For BIT DATA(16),
+         * IN P_SYNCHTIME TIMESTAMP,
+         * IN P_APPLY_QUAL VARCHAR(18),
+         * IN P_SET_NAME VARCHAR(18),
+         * IN P_TARGET_SERVER VARCHAR(18),
+         * OUT P_UPDATED_COUNT INT
          */
         this.updatePruneSetProcedureCall = "" +
                 "CALL " +
                 PROCEDURE_NAME_PLACEHOLDER +
-                "(?, ?, ?, ?, ?, ?)";  // 6 ? placeholders: positions 1-5 IN, 6 OUT
-
+                " (P_SYNCHPOINT=>?, P_SYNCHTIME=>?, P_APPLY_QUAL=>?, P_SET_NAME=>?, P_TARGET_SERVER=>?, P_UPDATED_COUNT=>?)"; // 6 ? placeholders: positions 1-5 IN, 6 OUT
     }
 
     @Override
