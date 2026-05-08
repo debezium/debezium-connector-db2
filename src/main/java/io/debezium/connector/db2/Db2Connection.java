@@ -6,7 +6,13 @@
 
 package io.debezium.connector.db2;
 
-import java.sql.*;
+import java.sql.CallableStatement;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;

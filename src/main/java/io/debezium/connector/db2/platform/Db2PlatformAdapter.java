@@ -24,5 +24,5 @@ public interface Db2PlatformAdapter {
 
     String getUpdatePruneSetForPruneSetName();
 
-    String getUpdatePruneSetProcedureCall(final String procedureName);
+    String getUpdatePruneSetProcedureCall(String procedureName);
 }

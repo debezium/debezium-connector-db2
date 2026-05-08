@@ -12,10 +12,15 @@ import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -32,6 +37,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.db2.Db2Connection;
 import io.debezium.connector.db2.Db2ConnectorConfig;
+import io.debezium.connector.db2.Lsn;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Clock;
@@ -46,6 +52,16 @@ public class TestHelper {
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
     public static final int WAIT_FOR_CDC = 3 * 5000;
+    public static final String CONTROL_TABLE_SCHEMA_NAME = "ASNCDC";
+    public static final String PRUNE_SET_TABLE_NAME = "IBMSNAP_PRUNE_SET";
+    public static final String PRUNE_CTL_TABLE_NAME = "IBMSNAP_PRUNCNTL";
+    public static final String REGISTER_CTL_TABLE_NAME = "IBMSNAP_REGISTER";
+    public static final String CAP_PARAMS_TABLE_NAME = "IBMSNAP_CAPPARMS";
+    public static final String CAP_SIGNAL_TABLE_NAME = "IBMSNAP_SIGNAL";
+    public static final String LSN_ZERO_STRING = "0x0000000000000000";
+    public static final Lsn LSN_FROM_ZERO_STRING = Lsn.valueOf(LSN_ZERO_STRING);
+    public static final String MAP_KEY_CHANGE_TABLE_OWNER = "MAP_KEY_CHANGE_TABLE_OWNER";
+    public static final String MAP_KEY_CHANGE_TABLE_NAME = "MAP_KEY_CHANGE_TABLE_NAME";
 
     /**
      * Key for schema parameter used to store a source column's type name.
@@ -297,5 +313,227 @@ public class TestHelper {
                 }
             });
         }
+    }
+
+    public static Map<String, String> prepareToPruneControlAndReinitializeCap(
+                                                                              final String targetTableSchemaName,
+                                                                              final String targetTableName,
+                                                                              final String applyQual,
+                                                                              final String setName,
+                                                                              final String targetSystem,
+                                                                              final int pruneIntervalInSec) {
+
+        final Map<String, String> pruneControlAndReinitializeCapMap = new HashMap<>();
+        final String mapId = "1000";
+
+        final AtomicReference<String> physChangeOwner = new AtomicReference<>();
+        final AtomicReference<String> physChangeTable = new AtomicReference<>();
+
+        try {
+            final Db2Connection conn = testConnection();
+            { // CapParams PruneInterval Block
+                LOGGER.info("Setting PruneInterval to {} seconds", pruneIntervalInSec);
+                conn.prepareUpdate(
+                        "UPDATE " + CONTROL_TABLE_SCHEMA_NAME + "." + CAP_PARAMS_TABLE_NAME + "\n" +
+                                "SET PRUNE_INTERVAL = ?",
+                        ps -> {
+                            ps.setInt(1, pruneIntervalInSec);
+                            ps.execute();
+                        });
+                conn.commit();
+            } // CapParams PruneInterval Block
+            { // Get Physical Change Table from Register Block
+                LOGGER.info("Getting Physical Change Table from Register Block");
+                conn.prepareQuery(
+                        "SELECT PHYS_CHANGE_OWNER, PHYS_CHANGE_TABLE \n" +
+                                "FROM " + CONTROL_TABLE_SCHEMA_NAME + "." + REGISTER_CTL_TABLE_NAME + "\n" +
+                                "WHERE SOURCE_OWNER = ? \n" +
+                                "AND SOURCE_TABLE = ?",
+                        ps -> {
+                            ps.setString(1, targetTableSchemaName);
+                            ps.setString(2, targetTableName);
+                        },
+                        rs -> {
+                            while (rs.next()) {
+                                physChangeOwner.set(rs.getString("PHYS_CHANGE_OWNER"));
+                                physChangeTable.set(rs.getString("PHYS_CHANGE_TABLE"));
+                            }
+                        });
+                LOGGER.info("PhysChangeOwner: {}, PhysChangeTable: {}", physChangeOwner, physChangeTable);
+                pruneControlAndReinitializeCapMap.put(MAP_KEY_CHANGE_TABLE_OWNER, physChangeOwner.get());
+                pruneControlAndReinitializeCapMap.put(MAP_KEY_CHANGE_TABLE_NAME, physChangeTable.get());
+            } // Get Physical Change Table from Register Block
+            { // Truncate PruneCtl Block
+                LOGGER.info("Truncating PruneCtl Block");
+                conn.execute("TRUNCATE TABLE " + CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_CTL_TABLE_NAME + " IMMEDIATE");
+                conn.commit();
+            } // Truncate PruneCtl Block
+            { // PruneCtl Block
+                LOGGER.info("Setting PruneCtl Block");
+
+                conn.prepareUpdate(
+                        "INSERT INTO " + CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_CTL_TABLE_NAME + " (" +
+                                "TARGET_SERVER, TARGET_OWNER, TARGET_TABLE, SYNCHTIME, SYNCHPOINT, " +
+                                "SOURCE_OWNER, SOURCE_TABLE, SOURCE_VIEW_QUAL, APPLY_QUAL, SET_NAME, " +
+                                "CNTL_SERVER, TARGET_STRUCTURE, CNTL_ALIAS, PHYS_CHANGE_OWNER, " +
+                                "PHYS_CHANGE_TABLE, MAP_ID) " +
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        ps -> {
+                            ps.setString(1, targetSystem);
+                            ps.setString(2, targetTableSchemaName);
+                            ps.setString(3, targetTableName);
+                            ps.setTimestamp(4, Timestamp.from(Instant.EPOCH));
+                            ps.setBytes(5, LSN_FROM_ZERO_STRING.getBinary());
+                            ps.setString(6, targetTableSchemaName);
+                            ps.setString(7, targetTableName);
+                            ps.setShort(8, Short.parseShort("0"));
+                            ps.setString(9, applyQual);
+                            ps.setString(10, setName);
+                            ps.setString(11, "CTL_SER");
+                            ps.setShort(12, Short.parseShort("8"));
+                            ps.setString(13, "CTLALAS");
+                            ps.setString(14, physChangeOwner.get());
+                            ps.setString(15, physChangeTable.get());
+                            ps.setString(16, mapId);
+                            ps.execute();
+                        });
+                conn.commit();
+            } // PruneCtl Block
+            { // Truncate PruneSet Block
+                LOGGER.info("Truncating PruneSet Block");
+                conn.execute("TRUNCATE TABLE " + CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_SET_TABLE_NAME + " IMMEDIATE");
+                conn.commit();
+            } // Truncate PruneSet Block
+            { // Populate PruneSet Block
+                LOGGER.info("Populating PruneSet Block");
+                conn.prepareUpdate(
+                        "INSERT INTO " + CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_SET_TABLE_NAME + "\n" +
+                                "(TARGET_SERVER, APPLY_QUAL, SET_NAME, SYNCHTIME, SYNCHPOINT)\n" +
+                                "VALUES(?,?,?,?,?)",
+                        ps -> {
+                            ps.setString(1, targetSystem);
+                            ps.setString(2, applyQual);
+                            ps.setString(3, setName);
+                            ps.setTimestamp(4, Timestamp.from(Instant.EPOCH));
+                            ps.setBytes(5, hexStringToByteArray(LSN_ZERO_STRING));
+                            ps.execute();
+                        });
+                conn.commit();
+            } // Populate PruneSet Block
+            { // CapSignal - Restart Cap for MapId Block
+                LOGGER.info("Restarting Cap for MapId Block");
+                conn.prepareUpdate(
+                        "INSERT INTO " + CONTROL_TABLE_SCHEMA_NAME + "." + CAP_SIGNAL_TABLE_NAME + "\n" +
+                                "(SIGNAL_TYPE, SIGNAL_SUBTYPE, SIGNAL_INPUT_IN, SIGNAL_STATE)\n" +
+                                "VALUES ('CMD', 'CAPSTART', ?, 'P')",
+                        ps -> {
+                            ps.setString(1, mapId);
+                            ps.execute();
+                        });
+                conn.commit();
+            } // CapSignal - Restart Cap for MapId Block
+            { // Confirm Prune Data is in Place Block
+                LOGGER.info("Confirming Prune Data is in Place Block");
+                conn.prepareQuery(
+                        "SELECT ips.TARGET_SERVER, ips.synchpoint, ips.SET_NAME, ips.TARGET_SERVER, ips.APPLY_QUAL, " +
+                                "ip.PHYS_CHANGE_OWNER, ip.PHYS_CHANGE_TABLE \n" +
+                                "FROM " + CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_SET_TABLE_NAME + " ips, \n" +
+                                CONTROL_TABLE_SCHEMA_NAME + "." + PRUNE_CTL_TABLE_NAME + " ip \n" +
+                                "WHERE ips.SET_NAME = ip.SET_NAME = ?\n" +
+                                "AND ips.TARGET_SERVER = ip.TARGET_SERVER = ?\n" +
+                                "AND ips.APPLY_QUAL = ip.APPLY_QUAL = ?",
+                        ps -> {
+                            ps.setString(1, setName);
+                            ps.setString(2, targetSystem);
+                            ps.setString(3, applyQual);
+                        },
+                        rs -> {
+                            while (rs.next()) {
+                                LOGGER.info("Prune Data record found. \nTargetServer: {}\nApplyQual: {}\nSetName: {}\n" +
+                                        "SynchPoint: {}\nPhysChangeOwner: {}\nPhysChangeTable: {}",
+                                        rs.getString("TARGET_SERVER"),
+                                        rs.getString("APPLY_QUAL"),
+                                        rs.getString("SET_NAME"),
+                                        rs.getString("synchpoint"),
+                                        rs.getString("PHYS_CHANGE_OWNER"),
+                                        rs.getString("PHYS_CHANGE_TABLE"));
+                            }
+                        });
+            } // Confirm Prune Data is in Place Block
+        }
+        catch (SQLException e) {
+            System.err.println("SQL Error: " + e.getSQLState() + " " + e.getMessage());
+            e.printStackTrace();
+        }
+        return pruneControlAndReinitializeCapMap;
+    }
+
+    public static Lsn getLsnSyncPointForPruneSet(final String applyQual,
+                                                 final String setName,
+                                                 final String targetSystem) {
+        {
+            final Db2Connection conn = testConnection();
+            LOGGER.info("Getting the current LSN on the table.");
+            AtomicReference<String> lsnString = new AtomicReference<>();
+            try {
+                conn.prepareQuery(
+                        "SELECT SYNCHPOINT \n" +
+                                "FROM " + CONTROL_TABLE_SCHEMA_NAME + "." + REGISTER_CTL_TABLE_NAME + "\n" +
+                                "WHERE SET_NAME = ?\n" +
+                                "AND TARGET_SERVER = ?\n" +
+                                "AND APPLY_QUAL = ?",
+                        ps -> {
+                            ps.setString(1, setName);
+                            ps.setString(2, targetSystem);
+                            ps.setString(3, applyQual);
+                        },
+                        rs -> {
+                            while (rs.next()) {
+                                lsnString.set(rs.getString("SYNCHPOINT"));
+
+                            }
+                        });
+            }
+            catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            return Lsn.valueOf(lsnString.get());
+        }
+    }
+
+    public static Lsn getLastChangeLsnForChangeTable(
+                                                     final String changeTableOwner,
+                                                     final String changeTableName) {
+
+        final Db2Connection conn = testConnection();
+        LOGGER.info("Getting the last change LSN for {}.{}", changeTableOwner, changeTableName);
+        AtomicReference<String> lsnString = new AtomicReference<>();
+        try {
+            conn.prepareQuery(
+                    "SELECT IBMSNAP_COMMITSEQ \n" +
+                            "FROM " + changeTableOwner + "." + changeTableName + "\n" +
+                            "ORDER BY IBMSNAP_COMMITSEQ DESC LIMIT 1",
+                    ps -> {
+                    },
+                    rs -> {
+                        while (rs.next()) {
+                            lsnString.set(rs.getString("IBMSNAP_COMMITSEQ"));
+                        }
+                    });
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return Lsn.valueOf(lsnString.get());
+    }
+
+    // Helper method to convert hex string to byte array
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
+        }
+        return data;
     }
 }
