@@ -74,6 +74,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for snapshot completion
         consumeRecordsByTopic(1);
+        waitForStreamingRunning("db2_server", TestHelper.TEST_DATABASE);
 
         TestHelper.enableDbCdc(connection);
         connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
