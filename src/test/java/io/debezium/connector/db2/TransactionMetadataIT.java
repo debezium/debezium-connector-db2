@@ -67,6 +67,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(Db2ConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "DB2INST1\\.TABLEA,DB2INST1\\.TABLEB")
                 .build();
 
         start(Db2Connector.class, config);
