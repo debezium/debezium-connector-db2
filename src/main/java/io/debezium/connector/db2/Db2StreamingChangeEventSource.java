@@ -234,7 +234,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                             }
                             if (connectorConfig.isUpdateCaptureTablePruneInd()) { // The use of stop lsn doesn't seem to make sense
                                 LOGGER.info("Bypassing check for STOP_LSN against change LSN (taken from IBMSNAP_REGISTER), " +
-                                        "a value that can't be null when using purge, and will quickly be too old to pass this test.");
+                                        "a value that can't be null when using prune, and will quickly be too old to pass this test.");
                             }
                             else {
                                 if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&

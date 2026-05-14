@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1138,22 +1139,27 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-1843")
     public void shouldUpdatePruneSetTableAndControlPrune() throws Exception {
-        final String targetTableSchemaName = "DB2INST1";
-        final String targetTableName = "TABLEA";
-        final String applyQual = "AQ00";
-        final String setName = "SET_NAME";
-        final String targetSystem = "TARGET_SYSTEM";
+        final String sourceTableSchemaName = "DB2INST1";
+        final String sourceTableName = "TABLEA";
+        final String applyQual = "KAFKAQUAL";
+        final String setName = "SET001";
+        final String targetSystem = "KAFKA";
         final int pruneIntervalInSec = 10;
 
+        final Map<String, String> pruneControlCapInfoMap = new HashMap<>();
+
         final int STARTING_ID = 100;
+        int currentId = STARTING_ID;
         final int ATTEMPTS_MAX = 10;
+        final int NUM_TO_INSERT = 10;
+
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_IND, true)
                 .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL, applyQual)
                 .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME, setName)
                 .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER, targetSystem)
                 .with(Db2ConnectorConfig.UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT, true)
-                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, targetTableSchemaName + "." + targetTableName)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, sourceTableSchemaName + "." + sourceTableName)
                 .build();
 
         start(Db2Connector.class, config);
@@ -1161,62 +1167,113 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for snapshot completion
         consumeRecordsByTopic(1);
-        // Establish Pruning Setup
-        final Map<String, String> controlTableInfoMap = TestHelper.prepareToPruneControlAndReinitializeCap(
-                targetTableSchemaName, targetTableName, applyQual, setName, targetSystem, pruneIntervalInSec);
+        TestHelper.setCapParamsPruneInterval(10);
         TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
         TestHelper.refreshAndWait(connection);
+        // Establish Pruning Setup
+        TestHelper.getChangeTablesForPhysicalTableFromRegistrationTable(
+                sourceTableSchemaName, sourceTableName, pruneControlCapInfoMap);
+        TestHelper.checkAndCorrectPhysicalChangeTablesBetweenRegistrationAndPrunectlForTable(
+                sourceTableSchemaName, sourceTableName, pruneControlCapInfoMap);
+        TestHelper.insertRecordToPruneSetTable(
+                targetSystem, applyQual, setName);
+        TestHelper.setOldSynchpointOnRegistrationTable(
+                sourceTableSchemaName, sourceTableName);
+        String mapId = TestHelper.getPruneCtlRecordsForTable(
+                sourceTableSchemaName, sourceTableName, targetSystem, applyQual, setName, pruneControlCapInfoMap);
+        TestHelper.signalCapRestartForMapId(mapId);
+        TestHelper.validatePruneReadinessForTable(
+                sourceTableSchemaName, sourceTableName, targetSystem, applyQual, setName);
+
         // Know where the pruning was at the beginning
         final Lsn startingPruneLsn = TestHelper.getLsnSyncPointForPruneSet(applyQual, setName, targetSystem);
+
         logger.info("Starting Prune LSN: {}", startingPruneLsn);
 
-        boolean receivedEventMatchingInsert = false;
-        for (int i = STARTING_ID; i < (ATTEMPTS_MAX + STARTING_ID); i++) {
-            final Lsn beforeInsertChangeTableLastLsn = TestHelper.getLastChangeLsnForChangeTable(
-                    controlTableInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
-                    controlTableInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
-            logger.info("Before Insert Change Table Last LSN: {}", beforeInsertChangeTableLastLsn);
-            logger.info("Inserting record with id {}", i);
+        final Lsn beforeInsertChangeTableLastLsn = TestHelper.getLastChangeLsnForChangeTable(
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
+        final int numRecordsOnChangeTableBefore = TestHelper.getSizeOfChangeTable(
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
+        logger.info("Before Insert Change Table size: {}", numRecordsOnChangeTableBefore);
+        logger.info("Before Insert Change Table Last LSN: {}", beforeInsertChangeTableLastLsn);
+        for (int j = 0; j < NUM_TO_INSERT; j++) {
+            logger.info("Inserting record with id {}", currentId);
             connection.execute(
-                    "INSERT INTO tablea VALUES(" + i + ", 'b')");
-            logger.info("Inserted record with id {}", i);
+                    "INSERT INTO tablea VALUES(" + currentId + ", 'b')");
+            logger.info("Inserted record with id {}", currentId);
             connection.commit();
-            TestHelper.refreshAndWait(connection);
-            SourceRecords sourceRecords = consumeRecordsByTopic(1);
-            sourceRecords.print();
-            for (String topicName : sourceRecords.topics()) {
-                logger.info("Topic: {}", topicName);
-            }
-            assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")).hasSize(1);
-            receivedEventMatchingInsert = true;
-            final Lsn afterInsertChangeTableLastLsn = TestHelper.getLastChangeLsnForChangeTable(
-                    controlTableInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
-                    controlTableInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
-            logger.info("After Insert Change Table Last LSN: {}", afterInsertChangeTableLastLsn);
-            final Lsn afterInsertChangeTableLastLsnDecremented = afterInsertChangeTableLastLsn.decrement();
-            // Wait to see if the prune point is moved forward. It won't move unless there are new changes
-            // to potentially reflect - that is why this is in a for.
-            Awaitility.await().atMost(pruneIntervalInSec, TimeUnit.SECONDS).until(() -> {
-                final Lsn pruneLsn = TestHelper.getLsnSyncPointForPruneSet(applyQual, setName, targetSystem);
-                logger.info("Prune LSN: {}", pruneLsn);
-                return pruneLsn.equals(afterInsertChangeTableLastLsnDecremented);
-            });
-            SourceRecord record = (SourceRecord) sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA").get(0).value();
-            logger.info("Expected key {}, found key {}", i, ((Struct) record.key()).get("ID"));
-            logger.info("Expected value {}, found value {}", i, ((Struct) record.value()).get("ID"));
+            currentId++;
         }
+        SourceRecords sourceRecords = consumeRecordsByTopic(NUM_TO_INSERT);
 
-        final Lsn endingPruneLsn = TestHelper.getLsnSyncPointForPruneSet(applyQual, setName, targetSystem);
-        logger.info("Ending Prune LSN: {}", endingPruneLsn);
+        final int numRecordsOnChangeTableAfter = TestHelper.getSizeOfChangeTable(
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
+        logger.info("After Insert Change Table size: {}", numRecordsOnChangeTableAfter);
 
-        // assertThat(sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")).hasSize(RECORDS_PER_TABLE);
+        final Lsn afterInsertChangeTableLastLsn = TestHelper.getLastChangeLsnForChangeTable(
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
+        logger.info("After Insert Change Table Last LSN: {}", afterInsertChangeTableLastLsn);
+        final Lsn afterInsertChangeTableLastLsnDecremented = afterInsertChangeTableLastLsn.decrement();
+        // Wait to see if the prune point is moved forward. It won't move unless there are new changes
+        // to potentially reflect. This shows that the prune set update table is being updated.
+        Awaitility.await().pollInterval(1, TimeUnit.SECONDS).atMost(pruneIntervalInSec * 2, TimeUnit.SECONDS).until(() -> {
+            TestHelper.createDBRecords(5);
+            final Lsn pruneLsnAfterEvent = TestHelper.getLsnSyncPointForPruneSet(applyQual, setName, targetSystem);
+            int comparison = afterInsertChangeTableLastLsnDecremented.compareTo(
+                    pruneLsnAfterEvent);
+            if (comparison < 0) {
+                logger.info("Prune LSN now: {} is the later than as it was following the initial changes: {}.",
+                        pruneLsnAfterEvent, afterInsertChangeTableLastLsnDecremented);
+                return true;
+            }
+            else if (comparison == 0) {
+                logger.info("Prune LSN now: {} is the same as it was following the initial changes: {}.",
+                        pruneLsnAfterEvent, afterInsertChangeTableLastLsnDecremented);
+                return false;
+            }
+            else {
+                logger.info("Prune LSN now: {} is the earlier than as it was following the initial changes: {}.",
+                        pruneLsnAfterEvent, afterInsertChangeTableLastLsnDecremented);
+                return false;
+            }
+        });
+        int priorChangeTableSize = TestHelper.getSizeOfChangeTable(
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
+        /*
+         * This test is to see if the prune from the Capture agent is reading the prune set table and pruning.
+         */
+        TestHelper.createDBRecords(100);
+        Awaitility.await().pollInterval(1, TimeUnit.SECONDS).atMost(600, TimeUnit.SECONDS).until(() -> {
+            int currentChangeTableSize = TestHelper.getSizeOfChangeTable(
+                    pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_OWNER),
+                    pruneControlCapInfoMap.get(TestHelper.MAP_KEY_CHANGE_TABLE_NAME));
 
-        // int expectedKey = STARTING_ID;
-        // for (SourceRecord record : sourceRecords.recordsForTopic("testdb.DB2INST1.TABLEA")) {
-        // logger.info("Expected key {}, found key {}", expectedKey, ((Struct) record.key()).get("ID"));
-        // assertThat(((Struct) record.key()).get("ID").equals(expectedKey));
-        // expectedKey++;
-        // }
+            logger.info("Change Table size: {} while it was before {}", currentChangeTableSize, numRecordsOnChangeTableAfter);
+            TestHelper.createDBRecords(1); // Keep adding one so there is a cycle to potentially allow a prune update
+            int comparison = Integer.compare(priorChangeTableSize, currentChangeTableSize);
+            if (comparison < 0) {
+                logger.info("The prior size {} is less than the current size {}. This means a prune has not recently occurred.",
+                        priorChangeTableSize, currentChangeTableSize);
+                TestHelper.readCapTrace(10);
+                return false;
+            }
+            else if (comparison == 0) {
+                logger.info("The prior size {} is the same as the current size {}. This means a prune has not recently occurred.",
+                        priorChangeTableSize, currentChangeTableSize);
+                return false;
+            }
+            else {
+                logger.info("The prior size {} greater than the current size {}. This means a prune has recently occurred.",
+                        priorChangeTableSize, currentChangeTableSize);
+                return true;
+            }
+        });
 
         stopConnector();
     }
@@ -1224,4 +1281,5 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
+
 }
