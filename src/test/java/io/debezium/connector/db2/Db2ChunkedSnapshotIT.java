@@ -46,6 +46,7 @@ public class Db2ChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Db2Connect
     @AfterEach
     public void afterEach() throws Exception {
         if (connection != null) {
+            TestHelper.dropAllTables();
             TestHelper.disableDbCdc(connection);
             connection.close();
         }
