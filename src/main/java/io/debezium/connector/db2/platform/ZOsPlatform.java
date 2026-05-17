@@ -48,7 +48,7 @@ public class ZOsPlatform implements Db2PlatformAdapter {
                 + ".# cdc inner join tmp2 res on cdc.IBMSNAP_COMMITSEQ=res.IBMSNAP_COMMITSEQ and cdc.IBMSNAP_INTENTSEQ=res.IBMSNAP_INTENTSEQ "
                 + "order by IBMSNAP_COMMITSEQ, IBMSNAP_INTENTSEQ";
 
-        this.getListOfCdcEnabledTables = "select r.SOURCE_OWNER, r.SOURCE_TABLE, r.CD_OWNER, r.CD_TABLE, r.CD_NEW_SYNCHPOINT, r.CD_OLD_SYNCHPOINT, t.DBID, t.OBID , CAST((t.DBID * 65536 +  t.OBID )AS INTEGER )from "
+        this.getListOfCdcEnabledTables = "select r.SOURCE_OWNER, r.SOURCE_TABLE, r.CD_OWNER, r.CD_TABLE, r.SYNCHPOINT, r.CD_OLD_SYNCHPOINT, t.DBID, t.OBID , CAST((t.DBID * 65536 +  t.OBID )AS INTEGER )from "
                 + connectorConfig.getCdcControlSchema()
                 + ".IBMSNAP_REGISTER r left JOIN SYSIBM.SYSTABLES t ON r.SOURCE_OWNER  = t.CREATOR AND r.SOURCE_TABLE = t.NAME  WHERE r.SOURCE_OWNER <> '' for read only with ur";
 
