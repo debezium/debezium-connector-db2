@@ -455,8 +455,7 @@ public class Db2Connection extends JdbcConnection {
              */
             try (final CallableStatement cs = connection().prepareCall(
                     platform.getUpdatePruneSetProcedureCall(
-                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()))
-            ) {
+                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()))) {
                 cs.setBytes("P_SYNCHPOINT", synchPointLSN.getBinary());
                 cs.setTimestamp("P_SYNCHTIME", Timestamp.from(synchInstant));
                 cs.setString("P_APPLY_QUAL", applyQual);
@@ -469,9 +468,10 @@ public class Db2Connection extends JdbcConnection {
                 if (rowsUpdated == 0) {
                     LOGGER.error("No rows updated when using the provided procedure for set {}, qual {}, targetServer {} to LSN {} and timestamp {} ",
                             setName, applyQual, targetServer, synchPointLSN, synchInstant);
-                } else if (rowsUpdated > 1) {
+                }
+                else if (rowsUpdated > 1) {
                     LOGGER.error("More than one row updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}. " +
-                                    "Number updated was {} when using the provided procedure",
+                            "Number updated was {} when using the provided procedure",
                             setName, applyQual, targetServer, synchPointLSN, synchInstant, rowsUpdated);
                 }
             }
