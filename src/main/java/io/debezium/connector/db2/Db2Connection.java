@@ -453,7 +453,7 @@ public class Db2Connection extends JdbcConnection {
              * IN P_TARGET_SERVER VARCHAR(18),
              * OUT P_UPDATED_COUNT INT
              */
-            try (final CallableStatement cs = connection().prepareCall(
+            try (CallableStatement cs = connection().prepareCall(
                     platform.getUpdatePruneSetProcedureCall(
                             connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()))) {
                 cs.setBytes("P_SYNCHPOINT", synchPointLSN.getBinary());
