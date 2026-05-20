@@ -10,6 +10,8 @@ import java.util.Arrays;
 
 import io.debezium.connector.Nullable;
 import io.debezium.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A logical representation of DB2 LSN (log sequence number) position. When LSN is not available
@@ -22,6 +24,9 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     private static final String NULL_STRING = "NULL";
 
     public static final Lsn NULL = new Lsn(null);
+    public static final Lsn ZERO = new Lsn(new byte[16]);
+
+    private static Logger LOGGER = LoggerFactory.getLogger(Lsn.class);
 
     private final byte[] binary;
     private int[] unsignedBinary;
@@ -184,6 +189,10 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * Return the prior LSN in sequence
      */
     public Lsn decrement() {
+        if (this.equals(Lsn.ZERO)) {
+            LOGGER.warn("Cannot decrement LSN {} as it is zero", this);
+            return this;
+        }
         final BigInteger bi = new BigInteger(this.toString().replace(":", ""), 16).subtract(BigInteger.ONE);
         final byte[] biByteArray = bi.toByteArray();
         final byte[] lsnByteArray = new byte[16];

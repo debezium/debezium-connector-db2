@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.util.Strings;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -528,12 +529,12 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .withValidation((config, field, problems) -> {
                 String value = config.getString(field);
                 boolean pruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
-                if (pruneInd && (value == null || value.isEmpty())) {
+                if (pruneInd && Strings.isNullOrEmpty(value)) {
                     problems.accept(field, value, "The if prune update is enabled, the set name must be " +
                             "set to a non-empty string.");
                     return 1;
                 }
-                else if (!pruneInd && !(value == null || value.isEmpty())) {
+                else if (!pruneInd && !Strings.isNullOrEmpty(value)) {
                     problems.accept(field, value, "The if prune update is disabled, the set name may not " +
                             "be set to a value ");
                     return 1;
@@ -683,31 +684,6 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.updateCaptureTablePruneApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL);
         this.updateCaptureTablePruneTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER);
         this.updateCaptureTablePruneProcedureOverrideName = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME);
-        if (this.updateCaptureTablePruneInd) {
-            if (this.updateCaptureTablePruneSetName == null || this.updateCaptureTablePruneSetName.isEmpty()) {
-                throw new ConfigException("The if prune update is enabled, the pruneSetName must be " +
-                        "set to a non-empty string.");
-            }
-            else if (this.updateCaptureTablePruneApplyQual == null || this.updateCaptureTablePruneApplyQual.isEmpty()) {
-                throw new ConfigException("The if prune update is enabled, the pruneApplyQual must be " +
-                        "set to a non-empty string.");
-            }
-            else if (this.updateCaptureTablePruneTargetServer == null || this.updateCaptureTablePruneTargetServer.isEmpty()) {
-                throw new ConfigException("The if prune update is enabled, the targetServer must be " +
-                        "set to a non-empty string.");
-            }
-        }
-        else {
-            if (this.updateCaptureTablePruneSetName != null) {
-                throw new ConfigException("The if prune update is disabled, the pruneSetName name may not be set to a value.");
-            }
-            if (this.updateCaptureTablePruneApplyQual != null) {
-                throw new ConfigException("The if prune update is disabled, the pruneApplyQual name may not be set to a value.");
-            }
-            if (this.updateCaptureTablePruneTargetServer != null) {
-                throw new ConfigException("The if prune update is disabled, the pruneTargetServer name may not be set to a value.");
-            }
-        }
     }
 
     public String getDatabaseName() {

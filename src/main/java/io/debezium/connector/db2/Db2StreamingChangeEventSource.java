@@ -307,7 +307,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
-                LOGGER.info("Last processed position is {}", lastProcessedPosition);
+                LOGGER.debug("Last processed position is {}", lastProcessedPosition);
                 handleSubSetPruneUpdate(currentMaxLsn);
                 handlePause(context);
             } // End Running While Loop
