@@ -453,28 +453,27 @@ public class Db2Connection extends JdbcConnection {
              * IN P_TARGET_SERVER VARCHAR(18),
              * OUT P_UPDATED_COUNT INT
              */
-            final CallableStatement cs = connection().prepareCall(
+            try (final CallableStatement cs = connection().prepareCall(
                     platform.getUpdatePruneSetProcedureCall(
-                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()));
-
-            cs.setBytes("P_SYNCHPOINT", synchPointLSN.getBinary());
-            cs.setTimestamp("P_SYNCHTIME", Timestamp.from(synchInstant));
-            cs.setString("P_APPLY_QUAL", applyQual);
-            cs.setString("P_SET_NAME", setName);
-            cs.setString("P_TARGET_SERVER", targetServer);
-            cs.registerOutParameter("P_UPDATED_COUNT", Types.INTEGER);
-            cs.execute();
-            final int rowsUpdated = cs.getInt("P_UPDATED_COUNT");
-            cs.getConnection().commit();
-            cs.close();
-            if (rowsUpdated == 0) {
-                LOGGER.error("No rows updated when using the provided procedure for set {}, qual {}, targetServer {} to LSN {} and timestamp {} ",
-                        setName, applyQual, targetServer, synchPointLSN, synchInstant);
-            }
-            else if (rowsUpdated > 1) {
-                LOGGER.error("More than one row updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}. " +
-                        "Number updated was {} when using the provided procedure",
-                        setName, applyQual, targetServer, synchPointLSN, synchInstant, rowsUpdated);
+                            connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName()))
+            ) {
+                cs.setBytes("P_SYNCHPOINT", synchPointLSN.getBinary());
+                cs.setTimestamp("P_SYNCHTIME", Timestamp.from(synchInstant));
+                cs.setString("P_APPLY_QUAL", applyQual);
+                cs.setString("P_SET_NAME", setName);
+                cs.setString("P_TARGET_SERVER", targetServer);
+                cs.registerOutParameter("P_UPDATED_COUNT", Types.INTEGER);
+                cs.execute();
+                final int rowsUpdated = cs.getInt("P_UPDATED_COUNT");
+                cs.getConnection().commit();
+                if (rowsUpdated == 0) {
+                    LOGGER.error("No rows updated when using the provided procedure for set {}, qual {}, targetServer {} to LSN {} and timestamp {} ",
+                            setName, applyQual, targetServer, synchPointLSN, synchInstant);
+                } else if (rowsUpdated > 1) {
+                    LOGGER.error("More than one row updated for set {}, qual {}, targetServer {} to LSN {} and timestamp {}. " +
+                                    "Number updated was {} when using the provided procedure",
+                            setName, applyQual, targetServer, synchPointLSN, synchInstant, rowsUpdated);
+                }
             }
         }
         else {
