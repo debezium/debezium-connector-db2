@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -86,6 +87,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private final Duration pollInterval;
     private final Db2ConnectorConfig connectorConfig;
     private Db2OffsetContext effectiveOffsetContext;
+    private Instant lastPruneUpdateInstant = Instant.EPOCH;
 
     private final SnapshotterService snapshotterService;
 
@@ -230,12 +232,18 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                         Db2ConnectorConfig.Z_STOP_LSN_IGNORE.name(),
                                         tableWithSmallestLsn.getChangeTable().getStopLsn());
                             }
-                            if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
-                                    tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
-                                LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
-                                        tableWithSmallestLsn.getChangePosition());
-                                tableWithSmallestLsn.next();
-                                continue;
+                            if (connectorConfig.isUpdateCaptureTablePruneInd()) { // The use of stop lsn doesn't seem to make sense
+                                LOGGER.info("Bypassing check for STOP_LSN against change LSN (taken from IBMSNAP_REGISTER), " +
+                                        "a value that can't be null when using prune, and will quickly be too old to pass this test.");
+                            }
+                            else {
+                                if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
+                                        tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
+                                    LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn,
+                                            tableWithSmallestLsn.getChangePosition());
+                                    tableWithSmallestLsn.next();
+                                    continue;
+                                }
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
@@ -292,18 +300,61 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         }
                     });
                     lastProcessedPosition = TxLogPosition.valueOf(currentMaxLsn);
+
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
                 }
-
+                LOGGER.debug("Last processed position is {}", lastProcessedPosition);
+                handleSubSetPruneUpdate(currentMaxLsn);
                 handlePause(context);
-            }
+            } // End Running While Loop
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
+        }
+    }
+
+    private void handleSubSetPruneUpdate(Lsn currentMaxLsn) throws SQLException {
+        if (connectorConfig.isUpdateCaptureTablePruneInd()) {
+            // Calculate duration since last prune update
+            final Duration durationSinceLastPruneUpdate = Duration.between(lastPruneUpdateInstant, Instant.now());
+            final Duration durationOfMinimumInterval = Duration.of(connectorConfig.getUpdateCaptureTablePruneMinIntervalMs(), ChronoUnit.MILLIS);
+            if (durationSinceLastPruneUpdate.compareTo(durationOfMinimumInterval) >= 0) {
+                LOGGER.info("Updating the prune point for the capture table as it has been {} since " +
+                        "the last prune update at {} and the minimum interval is {}.",
+                        durationSinceLastPruneUpdate.toMillis(),
+                        lastPruneUpdateInstant.toString(),
+                        durationOfMinimumInterval.toMillis());
+                lastPruneUpdateInstant = Instant.now();
+                final Instant currentMaxLsnInstant = dataConnection.timestampOfLsn(currentMaxLsn);
+                Lsn lsnToApply = currentMaxLsn;
+                if (connectorConfig.isUpdateCaptureTablePruneLsnDecrement()) {
+                    final Lsn decrementedLsn = currentMaxLsn.decrement();
+                    LOGGER.info("Decrementing the prune point for the capture table by 1 LSN \nBefore: {} \nAfter: {}", lsnToApply, decrementedLsn);
+                    lsnToApply = decrementedLsn;
+                }
+                LOGGER.info("Updating the prune point for the capture table to the time of {} and the lsn of {}.",
+                        currentMaxLsnInstant.toString(),
+                        lsnToApply);
+
+                dataConnection.updatePrunePointForSubSet(
+                        lsnToApply,
+                        currentMaxLsnInstant,
+                        connectorConfig.getUpdateCaptureTablePruneApplyQual(),
+                        connectorConfig.getUpdateCaptureTablePruneSetName(),
+                        connectorConfig.getUpdateCaptureTablePruneTargetServer());
+                LOGGER.info("Updated the prune point for the capture table");
+            }
+            else {
+                LOGGER.info("Skipping updating the prune point for the capture table as it has been {} ms since " +
+                        "the last prune update at {} and the minimum interval is {} ms.",
+                        durationSinceLastPruneUpdate.toMillis(),
+                        lastPruneUpdateInstant.toString(),
+                        durationOfMinimumInterval.toMillis());
+            }
         }
     }
 
