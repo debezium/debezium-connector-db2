@@ -205,6 +205,60 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
 
     protected abstract void performSchemaChange(Configuration config, Db2Connection connection, String alterStatement) throws Exception;
 
+    @Test
+    @FixFor("debezium/dbz#2042")
+    public void shouldHandleDecimalDefaultValueWithZeroScale() throws Exception {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
+        List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                // Test case 1: DECIMAL(18,8) with default value "0" - This is the main issue
+                // Without the fix, this will fail with: "Decimal value has mismatching scale"
+                new ColumnDefinition("val_decimal_zero", "decimal(18,8)",
+                        "0", "1",
+                        new BigDecimal("0.00000000"), new BigDecimal("1.00000000"),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+
+                // Test case 2: DECIMAL(10,4) with default value "0"
+                // Tests that the fix works for different scale values
+                new ColumnDefinition("val_decimal_zero_small", "decimal(10,4)",
+                        "0", "5",
+                        new BigDecimal("0.0000"), new BigDecimal("5.0000"),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+
+                // Test case 3: DECIMAL(18,8) with explicit scale - Should already work
+                // This verifies we don't break existing functionality
+                new ColumnDefinition("val_decimal_explicit", "decimal(18,8)",
+                        "0.00000000", "1.00000000",
+                        new BigDecimal("0.00000000"), new BigDecimal("1.00000000"),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+
+                // Test case 4: NUMERIC(18,8) with default value "0"
+                // NUMERIC is an alias for DECIMAL, should have same behavior
+                new ColumnDefinition("val_numeric_zero", "numeric(18,8)",
+                        "0", "2",
+                        new BigDecimal("0.00000000"), new BigDecimal("2.00000000"),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+
+                // Test case 5: DECIMAL(5,2) with default value "3.1"
+                // Tests partial scale (value has scale 1, column expects 2)
+                new ColumnDefinition("val_decimal_partial", "decimal(5,2)",
+                        "3.1", "4.2",
+                        new BigDecimal("3.10"), new BigDecimal("4.20"),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+
+                // Test case 6: DECIMAL(10,0) with default value "100"
+                // Tests scale 0 (no decimal places) - should not need adjustment
+                new ColumnDefinition("val_decimal_no_scale", "decimal(10,0)",
+                        "100", "200",
+                        new BigDecimal("100"), new BigDecimal("200"),
+                        AssertionType.FIELD_DEFAULT_EQUAL));
+
+        shouldHandleDefaultValuesCommon(columnDefinitions);
+    }
+
     /**
      * Handles executing the full common set of default value tests for the supplied column definitions.
      *
