@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.db2;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -90,7 +92,15 @@ public class Db2DefaultValueConverter implements DefaultValueConverter {
                 final Field field = new Field(column.name(), -1, schema);
                 final ValueConverter valueConverter = valueConverters.converter(column, field);
 
-                return valueConverter.convert(defaultValue);
+                var result = valueConverter.convert(defaultValue);
+
+                // Adjust BigDecimal scale to match column definition if needed
+                if ((result instanceof BigDecimal) && column.scale().isPresent()
+                        && column.scale().get() != ((BigDecimal) result).scale()) {
+                    result = ((BigDecimal) result).setScale(column.scale().get(), RoundingMode.HALF_EVEN);
+                }
+
+                return result;
             }
         }
         return defaultValue;
