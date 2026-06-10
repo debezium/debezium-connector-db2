@@ -94,11 +94,6 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleNumericDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_bigint", "bigint",
                         "1", "2",
@@ -119,11 +114,6 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 // DECFLOAT is variable scale precise type and Kafka does not support STRUCT
                 // as default value so it is set to null
@@ -208,11 +198,6 @@ public abstract class AbstractDb2DefaultValueIT extends AbstractAsyncEngineConne
     @Test
     @FixFor("debezium/dbz#2042")
     public void shouldHandleDecimalDefaultValueWithZeroScale() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 // Test case 1: DECIMAL(18,8) with default value "0" - This is the main issue
                 // Without the fix, this will fail with: "Decimal value has mismatching scale"
