@@ -512,7 +512,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        System.out.println("Records: " + records.allRecordsInOrder());
+        Testing.print("Records: " + records.allRecordsInOrder());
         tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
         tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
         assertThat(tableA == null || tableA.isEmpty()).isTrue();
@@ -527,7 +527,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        System.out.println("Records: " + records.allRecordsInOrder());
+        Testing.print("Records: " + records.allRecordsInOrder());
         tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
         tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
         assertThat(tableA == null || tableA.isEmpty()).isTrue();
@@ -542,7 +542,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        System.out.println("Records: " + records.allRecordsInOrder());
+        Testing.print("Records: " + records.allRecordsInOrder());
         tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
         tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
         assertThat(tableA == null || tableA.isEmpty()).isTrue();

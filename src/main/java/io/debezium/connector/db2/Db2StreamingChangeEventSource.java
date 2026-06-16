@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -116,7 +117,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             throws InterruptedException {
 
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
-        final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
+        final Queue<Db2ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getSchemaSwitchLsn().compareTo(y.getSchemaSwitchLsn()));
+        final Set<String> scheduledSchemaChanges = new HashSet<>();
+        final Set<String> migratedSchemaChanges = new HashSet<>();
         try {
             final AtomicReference<Db2ChangeTable[]> tablesSlot = new AtomicReference<>(getCdcTablesToQuery(partition, offsetContext));
 
@@ -159,21 +162,12 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         : lastProcessedPosition.getCommitLsn();
                 shouldIncreaseFromLsn = true;
 
-                while (!schemaChangeCheckpoints.isEmpty()) {
-                    migrateTable(partition, offsetContext, schemaChangeCheckpoints);
-                }
                 if (!dataConnection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
                     final Db2ChangeTable[] tables = getCdcTablesToQuery(partition, offsetContext);
                     tablesSlot.set(tables);
-                    for (Db2ChangeTable table : tables) {
-                        if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn.increment())) {
-                            LOGGER.info(
-                                    "Schema will be changed for {} as its start LSN = {} and interval check is ({}, {})",
-                                    table, table.getStartLsn(), fromLsn, currentMaxLsn.increment());
-                            schemaChangeCheckpoints.add(table);
-                        }
-                    }
                 }
+                scheduleSchemaChangeCheckpoints(tablesSlot.get(), schemaChangeCheckpoints, scheduledSchemaChanges, migratedSchemaChanges, currentMaxLsn.increment());
+                migrateDueTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges, fromLsn);
                 try {
                     dataConnection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
 
@@ -240,11 +234,8 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 continue;
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
-                            if (!schemaChangeCheckpoints.isEmpty()) {
-                                if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
-                                    migrateTable(partition, offsetContext, schemaChangeCheckpoints);
-                                }
-                            }
+                            migrateDueTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges,
+                                    tableWithSmallestLsn.getChangePosition().getCommitLsn());
                             final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
                             final int operation = tableWithSmallestLsn.getOperation();
                             Object[] data = tableWithSmallestLsn.getData();
@@ -318,16 +309,43 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
+    private void scheduleSchemaChangeCheckpoints(Db2ChangeTable[] tables, Queue<Db2ChangeTable> schemaChangeCheckpoints,
+                                                 Set<String> scheduledSchemaChanges, Set<String> migratedSchemaChanges, Lsn intervalEndLsn) {
+        for (Db2ChangeTable table : tables) {
+            if (!table.hasSchemaSwitchLsn() || table.getSchemaSwitchLsn().compareTo(intervalEndLsn) >= 0) {
+                continue;
+            }
+
+            final String schemaChangeKey = schemaChangeKey(table);
+            if (scheduledSchemaChanges.contains(schemaChangeKey) || migratedSchemaChanges.contains(schemaChangeKey)) {
+                continue;
+            }
+
+            LOGGER.info("Schema will be changed for {} at switch LSN {}", table, table.getSchemaSwitchLsn());
+            schemaChangeCheckpoints.add(table);
+            scheduledSchemaChanges.add(schemaChangeKey);
+        }
+    }
+
+    private void migrateDueTables(Db2Partition partition, Db2OffsetContext offsetContext,
+                                  Queue<Db2ChangeTable> schemaChangeCheckpoints, Set<String> migratedSchemaChanges, Lsn currentLsn)
+            throws InterruptedException, SQLException {
+        while (!schemaChangeCheckpoints.isEmpty() && schemaChangeCheckpoints.peek().getSchemaSwitchLsn().compareTo(currentLsn) <= 0) {
+            final Db2ChangeTable migratedTable = migrateTable(partition, offsetContext, schemaChangeCheckpoints);
+            migratedSchemaChanges.add(schemaChangeKey(migratedTable));
+        }
+    }
+
     @Override
     public Db2OffsetContext getOffsetContext() {
         return effectiveOffsetContext;
     }
 
-    private void migrateTable(Db2Partition partition, Db2OffsetContext offsetContext,
-                              final Queue<Db2ChangeTable> schemaChangeCheckpoints)
+    private Db2ChangeTable migrateTable(Db2Partition partition, Db2OffsetContext offsetContext,
+                                        final Queue<Db2ChangeTable> schemaChangeCheckpoints)
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
-        LOGGER.info("Migrating schema to {}", newTable);
+        LOGGER.info("Migrating schema to {} at switch LSN {}", newTable, newTable.getSchemaSwitchLsn());
         Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         offsetContext.event(newTable.getSourceTableId(), Instant.now());
         dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
@@ -335,6 +353,11 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         SchemaChangeEventType.ALTER));
 
         newTable.setSourceTable(tableSchema);
+        return newTable;
+    }
+
+    private String schemaChangeKey(Db2ChangeTable table) {
+        return table.getSourceTableId() + "|" + table.getCaptureInstance() + "|" + table.getSchemaSwitchLsn();
     }
 
     private Db2ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, Db2ChangeTable[] currentChangeTables) throws Exception {
@@ -378,14 +401,15 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             Db2ChangeTable currentTable = captures.get(0);
             if (captures.size() > 1) {
                 Db2ChangeTable futureTable;
-                if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
+                if (captures.get(0).getCaptureStartLsn().compareTo(captures.get(1).getCaptureStartLsn()) < 0) {
                     futureTable = captures.get(1);
                 }
                 else {
                     currentTable = captures.get(1);
                     futureTable = captures.get(0);
                 }
-                currentTable.setStopLsn(futureTable.getStartLsn());
+                currentTable.setStopLsn(futureTable.getCaptureStartLsn());
+                futureTable.setSchemaSwitchLsn(futureTable.getCaptureStartLsn());
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
