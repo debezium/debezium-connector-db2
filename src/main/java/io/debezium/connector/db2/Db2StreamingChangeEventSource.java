@@ -346,11 +346,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             throws InterruptedException, SQLException {
         final Db2ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {} at switch LSN {}", newTable, newTable.getSchemaSwitchLsn());
+        metadataConnection.rollback();
         Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         offsetContext.event(newTable.getSourceTableId(), Instant.now());
-        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
-                new Db2SchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
-                        SchemaChangeEventType.ALTER));
+        dispatchSchemaChange(partition, offsetContext, newTable, tableSchema, SchemaChangeEventType.ALTER);
 
         newTable.setSourceTable(tableSchema);
         return newTable;
@@ -413,28 +412,46 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
-            if (schema.tableFor(currentTable.getSourceTableId()) == null) {
+            final Table currentTableSchema = schema.tableFor(currentTable.getSourceTableId());
+            if (currentTableSchema == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
                 // this prevents potential NPE if there is no TableId information in the source info
                 offsetContext.event(currentTable.getSourceTableId(), Instant.now());
 
                 // We need to read the source table schema - nullability information cannot be obtained from change table
-                dispatcher.dispatchSchemaChangeEvent(
-                        partition,
-                        offsetContext,
-                        currentTable.getSourceTableId(),
-                        new Db2SchemaChangeEventEmitter(
-                                partition,
-                                offsetContext,
-                                currentTable,
-                                dataConnection.getTableSchemaFromTable(currentTable),
-                                schema,
-                                SchemaChangeEventType.CREATE));
+                dispatchSchemaChange(partition, offsetContext, currentTable, dataConnection.getTableSchemaFromTable(currentTable),
+                        SchemaChangeEventType.CREATE);
+            }
+            else if (captures.size() == 1) {
+                final Table sourceTableSchema = dataConnection.getTableSchemaFromTable(currentTable);
+                if (!sourceTableSchema.equals(currentTableSchema)) {
+                    LOGGER.info("Refreshing schema for table {} monitored by capture instance {}", currentTable.getSourceTableId(),
+                            currentTable.getCaptureInstance());
+                    offsetContext.event(currentTable.getSourceTableId(), Instant.now());
+                    dispatchSchemaChange(partition, offsetContext, currentTable, sourceTableSchema, SchemaChangeEventType.ALTER);
+                    currentTable.setSourceTable(sourceTableSchema);
+                }
             }
             tables.add(currentTable);
         }
 
         return tables.toArray(new Db2ChangeTable[tables.size()]);
+    }
+
+    private void dispatchSchemaChange(Db2Partition partition, Db2OffsetContext offsetContext, Db2ChangeTable changeTable, Table tableSchema,
+                                      SchemaChangeEventType schemaChangeEventType)
+            throws InterruptedException {
+        dispatcher.dispatchSchemaChangeEvent(
+                partition,
+                offsetContext,
+                changeTable.getSourceTableId(),
+                new Db2SchemaChangeEventEmitter(
+                        partition,
+                        offsetContext,
+                        changeTable,
+                        tableSchema,
+                        schema,
+                        schemaChangeEventType));
     }
 
     /**
