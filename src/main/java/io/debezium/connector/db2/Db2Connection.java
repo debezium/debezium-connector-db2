@@ -442,7 +442,7 @@ public class Db2Connection extends JdbcConnection {
         LOGGER.trace("Updating prune point for set {} to LSN {} and timestamp {}", setName, synchPointLSN, synchInstant);
 
         if (connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName() != null) {
-            LOGGER.info("Using database procedure for prune update as configuration specifies to use {}",
+            LOGGER.debug("Using database procedure for prune update as configuration specifies to use {}",
                     connectorConfig.getUpdateCaptureTablePruneProcedureOverrideName());
             /*
              * Implementation must have this interface:

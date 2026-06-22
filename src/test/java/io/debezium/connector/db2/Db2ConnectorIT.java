@@ -27,11 +27,11 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -1137,7 +1137,7 @@ public class Db2ConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1843")
+    @FixFor("debezium/dbz#1843")
     public void shouldUpdatePruneSetTableAndControlPrune() throws Exception {
         final String sourceTableSchemaName = "DB2INST1";
         final String sourceTableName = "TABLEA";

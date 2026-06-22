@@ -78,15 +78,16 @@ public class LuwPlatform implements Db2PlatformAdapter {
                 "       uow.IBMSNAP_COMMITSEQ DESC " +
                 "LIMIT 1";
 
-        this.updatePruneSetForPruneSetName = "" +
-                "UPDATE " + connectorConfig.getCdcControlSchema() + ".IBMSNAP_PRUNE_SET " +
-                "SET " +
-                "  SYNCHPOINT = ?, " +
-                "  SYNCHTIME = ? " +
-                "WHERE " +
-                "   APPLY_QUAL = ? AND " +
-                "   SET_NAME = ? AND " +
-                "   TARGET_SERVER = ?;";
+        this.updatePruneSetForPruneSetName = """
+                UPDATE %s.IBMSNAP_PRUNE_SET
+                SET
+                    SYNCHPOINT = ?,
+                    SYNCHTIME = ?
+                WHERE
+                    APPLY_QUAL = ? AND
+                    SET_NAME = ? AND
+                    TARGET_SERVER = ?;
+                """.formatted(connectorConfig.getCdcControlSchema());
 
         /*
          * Implementation must have this interface:
@@ -97,10 +98,9 @@ public class LuwPlatform implements Db2PlatformAdapter {
          * IN P_TARGET_SERVER VARCHAR(18),
          * OUT P_UPDATED_COUNT INT
          */
-        this.updatePruneSetProcedureCall = "" +
-                "CALL " +
-                PROCEDURE_NAME_PLACEHOLDER +
-                " (P_SYNCHPOINT=>?, P_SYNCHTIME=>?, P_APPLY_QUAL=>?, P_SET_NAME=>?, P_TARGET_SERVER=>?, P_UPDATED_COUNT=>?)"; // 6 ? placeholders: positions 1-5 IN, 6 OUT
+        this.updatePruneSetProcedureCall = """
+                CALL %s (P_SYNCHPOINT=>?, P_SYNCHTIME=>?, P_APPLY_QUAL=>?, P_SET_NAME=>?, P_TARGET_SERVER=>?, P_UPDATED_COUNT=>?)
+                """.formatted(PROCEDURE_NAME_PLACEHOLDER); // 6 ? placeholders: positions 1-5 IN, 6 OUT
     }
 
     @Override

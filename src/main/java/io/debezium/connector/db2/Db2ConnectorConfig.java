@@ -530,12 +530,12 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                 String value = config.getString(field);
                 boolean pruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
                 if (pruneInd && Strings.isNullOrEmpty(value)) {
-                    problems.accept(field, value, "The if prune update is enabled, the set name must be " +
+                    problems.accept(field, value, "If prune update is enabled, the set name must be " +
                             "set to a non-empty string.");
                     return 1;
                 }
                 else if (!pruneInd && !Strings.isNullOrEmpty(value)) {
-                    problems.accept(field, value, "The if prune update is disabled, the set name may not " +
+                    problems.accept(field, value, "If prune update is disabled, the set name may not " +
                             "be set to a value ");
                     return 1;
                 }
@@ -600,7 +600,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     QUERY_FETCH_SIZE,
                     CDC_CONTROL_SCHEMA,
                     CDC_CHANGE_TABLES_SCHEMA,
-                    DB2_PLATFORM)
+                    DB2_PLATFORM,
+                    UPDATE_CAPTURE_TABLE_PRUNE_IND,
+                    UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME,
+                    UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL,
+                    UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT,
+                    UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL,
+                    UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER,
+                    UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,

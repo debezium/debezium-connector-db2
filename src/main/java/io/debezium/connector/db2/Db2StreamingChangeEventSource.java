@@ -323,7 +323,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             final Duration durationSinceLastPruneUpdate = Duration.between(lastPruneUpdateInstant, Instant.now());
             final Duration durationOfMinimumInterval = Duration.of(connectorConfig.getUpdateCaptureTablePruneMinIntervalMs(), ChronoUnit.MILLIS);
             if (durationSinceLastPruneUpdate.compareTo(durationOfMinimumInterval) >= 0) {
-                LOGGER.info("Updating the prune point for the capture table as it has been {} since " +
+                LOGGER.debug("Updating the prune point for the capture table as it has been {} since " +
                         "the last prune update at {} and the minimum interval is {}.",
                         durationSinceLastPruneUpdate.toMillis(),
                         lastPruneUpdateInstant.toString(),
@@ -333,10 +333,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 Lsn lsnToApply = currentMaxLsn;
                 if (connectorConfig.isUpdateCaptureTablePruneLsnDecrement()) {
                     final Lsn decrementedLsn = currentMaxLsn.decrement();
-                    LOGGER.info("Decrementing the prune point for the capture table by 1 LSN \nBefore: {} \nAfter: {}", lsnToApply, decrementedLsn);
+                    LOGGER.debug("Decrementing the prune point for the capture table by 1 LSN \nBefore: {} \nAfter: {}", lsnToApply, decrementedLsn);
                     lsnToApply = decrementedLsn;
                 }
-                LOGGER.info("Updating the prune point for the capture table to the time of {} and the lsn of {}.",
+                LOGGER.debug("Updating the prune point for the capture table to the time of {} and the lsn of {}.",
                         currentMaxLsnInstant.toString(),
                         lsnToApply);
 
@@ -346,10 +346,10 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         connectorConfig.getUpdateCaptureTablePruneApplyQual(),
                         connectorConfig.getUpdateCaptureTablePruneSetName(),
                         connectorConfig.getUpdateCaptureTablePruneTargetServer());
-                LOGGER.info("Updated the prune point for the capture table");
+                LOGGER.debug("Updated the prune point for the capture table");
             }
             else {
-                LOGGER.info("Skipping updating the prune point for the capture table as it has been {} ms since " +
+                LOGGER.debug("Skipping updating the prune point for the capture table as it has been {} ms since " +
                         "the last prune update at {} and the minimum interval is {} ms.",
                         durationSinceLastPruneUpdate.toMillis(),
                         lastPruneUpdateInstant.toString(),
