@@ -31,7 +31,6 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     private final byte[] binary;
     private int[] unsignedBinary;
-
     private String string;
 
     private Lsn(byte[] binary) {
