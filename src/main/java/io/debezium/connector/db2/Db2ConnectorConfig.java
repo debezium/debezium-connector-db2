@@ -38,6 +38,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The list of configuration options for DB2 connector
@@ -508,6 +509,77 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                 return 0;
             });
 
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_IND = Field.create("update.capture.table.prune.ind")
+            .withDescription(
+                    "A switch to control if the connector instance is responsible for updating the prune table (usually " +
+                            "done by IBM Apply agent) which will cause the IBM Capture agent to prune read data from the change tables." +
+                            " default false.")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.MEDIUM)
+            .withWidth(Width.SHORT)
+            .withDefault(false);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME = Field.create("update.capture.table.prune.set.name")
+            .withDescription(
+                    "If set to update the prune table, this will identify the prune set name that should be used " +
+                            "when updating the table for this instance.")
+            .withType(Type.STRING)
+            .withImportance(Importance.MEDIUM)
+            .withWidth(Width.MEDIUM)
+            .withValidation((config, field, problems) -> {
+                String value = config.getString(field);
+                boolean pruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
+                if (pruneInd && Strings.isNullOrEmpty(value)) {
+                    problems.accept(field, value, "If prune update is enabled, the set name must be " +
+                            "set to a non-empty string.");
+                    return 1;
+                }
+                else if (!pruneInd && !Strings.isNullOrEmpty(value)) {
+                    problems.accept(field, value, "If prune update is disabled, the set name may not " +
+                            "be set to a value ");
+                    return 1;
+                }
+                return 0;
+            });
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL = Field.create("update.capture.table.prune.min.interval.ms")
+            .withDescription(
+                    "The minimum number of milliseconds between the connector instance's update of the prune point for " +
+                            "the subscription set.  Default is 10000 (10 seconds).")
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.SHORT)
+            .withDefault(10000);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT = Field.create("update.capture.table.prune.lsn.decrement")
+            .withDescription(
+                    "An switch to decrement the prune lsn/syncpoint by one to avoid allowing the last lsn processed to get pruned " +
+                            "to avoid the risk of an unnecessary snapshot due to the last processed lsn not being present in the change table.")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.MEDIUM)
+            .withDefault(true);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL = Field.create("update.capture.table.prune.apply.qual")
+            .withDescription(
+                    "The apply_qual name that represents the apply agent (this instance) to the subscription set.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.MEDIUM);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER = Field.create("update.capture.table.prune.target.server")
+            .withDescription(
+                    "The target_server name that represents the apply agent's target (where the data is going) for the subscription set.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.MEDIUM);
+
+    public static final Field UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME = Field.create("update.capture.table.prune.procedure.override.name")
+            .withDescription(
+                    "The name of a prepared statement in the database that will be used instead of direct sql to allow for DBA control of the update code where needed.")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withWidth(Width.LONG);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(Db2SourceInfoStructMaker.class.getName());
 
@@ -528,7 +600,14 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     QUERY_FETCH_SIZE,
                     CDC_CONTROL_SCHEMA,
                     CDC_CHANGE_TABLES_SCHEMA,
-                    DB2_PLATFORM)
+                    DB2_PLATFORM,
+                    UPDATE_CAPTURE_TABLE_PRUNE_IND,
+                    UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME,
+                    UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL,
+                    UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT,
+                    UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL,
+                    UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER,
+                    UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -564,6 +643,16 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     private final int streamingQueryTimespanSeconds;
     private final boolean streamingQueryTimespanEnabled;
 
+    private final boolean updateCaptureTablePruneInd;
+    private final String updateCaptureTablePruneSetName;
+    private final int updateCaptureTablePruneMinIntervalMs;
+
+    private final boolean updateCaptureTablePruneLsnDecrement;
+    private final String updateCaptureTablePruneApplyQual;
+    private final String updateCaptureTablePruneTargetServer;
+
+    private final String updateCaptureTablePruneProcedureOverrideName;
+
     public Db2ConnectorConfig(Configuration config) {
         super(
                 Db2Connector.class,
@@ -595,6 +684,13 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         else {
             this.streamingQueryTimespanEnabled = true;
         }
+        this.updateCaptureTablePruneInd = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_IND);
+        this.updateCaptureTablePruneSetName = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_SET_NAME);
+        this.updateCaptureTablePruneMinIntervalMs = config.getInteger(UPDATE_CAPTURE_TABLE_PRUNE_MIN_INTERVAL);
+        this.updateCaptureTablePruneLsnDecrement = config.getBoolean(UPDATE_CAPTURE_TABLE_PRUNE_LSN_DECREMENT);
+        this.updateCaptureTablePruneApplyQual = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_APPLY_QUAL);
+        this.updateCaptureTablePruneTargetServer = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_TARGET_SERVER);
+        this.updateCaptureTablePruneProcedureOverrideName = config.getString(UPDATE_CAPTURE_TABLE_PRUNE_PROCEDURE_OVERRIDE_NAME);
     }
 
     public String getDatabaseName() {
@@ -635,6 +731,34 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     public boolean isStreamingQueryTimespanEnabled() {
         return streamingQueryTimespanEnabled;
+    }
+
+    public boolean isUpdateCaptureTablePruneInd() {
+        return updateCaptureTablePruneInd;
+    }
+
+    public int getUpdateCaptureTablePruneMinIntervalMs() {
+        return updateCaptureTablePruneMinIntervalMs;
+    }
+
+    public boolean isUpdateCaptureTablePruneLsnDecrement() {
+        return updateCaptureTablePruneLsnDecrement;
+    }
+
+    public String getUpdateCaptureTablePruneSetName() {
+        return updateCaptureTablePruneSetName;
+    }
+
+    public String getUpdateCaptureTablePruneApplyQual() {
+        return updateCaptureTablePruneApplyQual;
+    }
+
+    public String getUpdateCaptureTablePruneTargetServer() {
+        return updateCaptureTablePruneTargetServer;
+    }
+
+    public String getUpdateCaptureTablePruneProcedureOverrideName() {
+        return updateCaptureTablePruneProcedureOverrideName;
     }
 
     @Override

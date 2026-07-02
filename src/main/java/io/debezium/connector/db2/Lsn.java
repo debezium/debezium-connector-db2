@@ -8,6 +8,9 @@ package io.debezium.connector.db2;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.Nullable;
 import io.debezium.util.Strings;
 
@@ -22,10 +25,12 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     private static final String NULL_STRING = "NULL";
 
     public static final Lsn NULL = new Lsn(null);
+    public static final Lsn ZERO = new Lsn(new byte[16]);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Lsn.class);
 
     private final byte[] binary;
     private int[] unsignedBinary;
-
     private String string;
 
     private Lsn(byte[] binary) {
@@ -172,6 +177,23 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      */
     public Lsn increment() {
         final BigInteger bi = new BigInteger(this.toString().replace(":", ""), 16).add(BigInteger.ONE);
+        final byte[] biByteArray = bi.toByteArray();
+        final byte[] lsnByteArray = new byte[16];
+        for (int i = 0; i < biByteArray.length; i++) {
+            lsnByteArray[i + 16 - biByteArray.length] = biByteArray[i];
+        }
+        return Lsn.valueOf(lsnByteArray);
+    }
+
+    /**
+     * Return the prior LSN in sequence
+     */
+    public Lsn decrement() {
+        if (this.equals(Lsn.ZERO)) {
+            LOGGER.warn("Cannot decrement LSN {} as it is zero", this);
+            return this;
+        }
+        final BigInteger bi = new BigInteger(this.toString().replace(":", ""), 16).subtract(BigInteger.ONE);
         final byte[] biByteArray = bi.toByteArray();
         final byte[] lsnByteArray = new byte[16];
         for (int i = 0; i < biByteArray.length; i++) {
