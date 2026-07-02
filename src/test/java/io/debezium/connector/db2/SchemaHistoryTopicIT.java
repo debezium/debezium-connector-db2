@@ -123,4 +123,45 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
                             .build());
         });
     }
+
+    @Test
+    @FixFor("DBZ-9234")
+    public void shouldNotAppendSchemaHistoryForEveryDataChange() throws Exception {
+        final int recordCount = 4;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+        waitForStreamingRunning("db2_server", TestHelper.TEST_DATABASE);
+
+        final long snapshotHistoryRecords = schemaHistoryRecordCount();
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        connection.execute(
+                "INSERT INTO tablea VALUES(100, 'a')",
+                "INSERT INTO tablea VALUES(101, 'b')",
+                "INSERT INTO tablea VALUES(102, 'c')",
+                "INSERT INTO tablea VALUES(103, 'd')");
+        TestHelper.refreshAndWait(connection);
+
+        final SourceRecords records = consumeRecordsByTopic(recordCount);
+        assertThat(records.recordsForTopic("testdb")).isNullOrEmpty();
+        assertThat(records.recordsForTopic("testdb.DB2INST1.TABLEA")).hasSize(recordCount);
+        assertThat(schemaHistoryRecordCount()).isEqualTo(snapshotHistoryRecords);
+        assertNoRecordsToConsume();
+    }
+
+    private long schemaHistoryRecordCount() throws Exception {
+        try (var lines = java.nio.file.Files.lines(TestHelper.DB_HISTORY_PATH)) {
+            return lines.count();
+        }
+    }
+
 }
