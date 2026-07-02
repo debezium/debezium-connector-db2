@@ -400,6 +400,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .withDisplayName("z/OS ignore stop LSN")
             .withDefault(false)
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
             .withDescription("If true, causes the connector to ignore the stop LSN value from the " +
                     "IBMSNAP_REGISTER.CD_OLD_SYNCHPOINT column when polling. " +
                     "Apply this if events are getting dropped due to the stop LSN being " +
@@ -411,7 +414,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -422,7 +425,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the monitored tables. "
@@ -440,7 +443,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription(
                     "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
                             + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "
@@ -452,7 +455,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field CDC_CONTROL_SCHEMA = Field.create("cdc.control.schema")
             .withDisplayName("CDC control schema")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_CDC_SCHEMA)
@@ -462,7 +465,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field CDC_CHANGE_TABLES_SCHEMA = Field.create("cdc.change.tables.schema")
             .withDisplayName("CDC change tables schema")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_CDC_SCHEMA)
@@ -472,7 +475,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static final Field DB2_PLATFORM = Field.create("db2.platform")
             .withDisplayName("Db2 platform")
             .withEnum(Db2Platform.class, Db2Platform.LUW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Informs connector which Db2 implementation platform it is connected to. "
@@ -491,6 +494,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     "The maximum number of seconds for a streaming query to include that query's result set, starting from the earliest row in this query.  " +
                             "Used to limit the size of queries when the change table is large to avoid excessive resource usage. If 0, no timespan limit will apply.")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withImportance(Importance.LOW)
             .withWidth(Width.SHORT)
             .withDefault(DEFAULT_STREAMING_QUERY_TIMESPAN_SECONDS)
@@ -513,32 +517,22 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Db2")
-            .excluding(CommonConnectorConfig.QUERY_FETCH_SIZE,
-                    CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER)
-            .type(
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    DATABASE_NAME)
-            .connector(
-                    SNAPSHOT_MODE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE,
-                    QUERY_FETCH_SIZE,
-                    CDC_CONTROL_SCHEMA,
-                    CDC_CHANGE_TABLES_SCHEMA,
-                    DB2_PLATFORM)
-            .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
+                    CommonConnectorConfig.QUERY_FETCH_SIZE,
+                    CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER,
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    // additional fields
                     BINARY_HANDLING_MODE,
                     INCLUDE_SCHEMA_COMMENTS,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
                     SNAPSHOT_MAX_THREADS,
                     DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_LOCKING_MODE)
+            .group(Field.Group.CONNECTOR, INCREMENTAL_SNAPSHOT_CHUNK_SIZE, SCHEMA_NAME_ADJUSTMENT_MODE,
+                    QUERY_FETCH_SIZE, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_ADVANCED, CDC_CONTROL_SCHEMA, CDC_CHANGE_TABLES_SCHEMA, DB2_PLATFORM,
+                    Z_STOP_LSN_IGNORE, STREAMING_QUERY_TIMESPAN_SECONDS)
             .create();
 
     protected static ConfigDef configDef() {
