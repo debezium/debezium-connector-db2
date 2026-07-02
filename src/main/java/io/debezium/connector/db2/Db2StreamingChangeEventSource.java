@@ -167,7 +167,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     tablesSlot.set(tables);
                 }
                 scheduleSchemaChangeCheckpoints(tablesSlot.get(), schemaChangeCheckpoints, scheduledSchemaChanges, migratedSchemaChanges, currentMaxLsn.increment());
-                migrateDueTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges, fromLsn);
+                migrateRequiredTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges, fromLsn);
                 try {
                     dataConnection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
 
@@ -234,7 +234,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                                 continue;
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
-                            migrateDueTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges,
+                            migrateRequiredTables(partition, offsetContext, schemaChangeCheckpoints, migratedSchemaChanges,
                                     tableWithSmallestLsn.getChangePosition().getCommitLsn());
                             final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
                             final int operation = tableWithSmallestLsn.getOperation();
@@ -327,7 +327,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         }
     }
 
-    private void migrateDueTables(Db2Partition partition, Db2OffsetContext offsetContext,
+    private void migrateRequiredTables(Db2Partition partition, Db2OffsetContext offsetContext,
                                   Queue<Db2ChangeTable> schemaChangeCheckpoints, Set<String> migratedSchemaChanges, Lsn currentLsn)
             throws InterruptedException, SQLException {
         while (!schemaChangeCheckpoints.isEmpty() && schemaChangeCheckpoints.peek().getSchemaSwitchLsn().compareTo(currentLsn) <= 0) {
@@ -356,7 +356,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     }
 
     private String schemaChangeKey(Db2ChangeTable table) {
-        return table.getSourceTableId() + "|" + table.getCaptureInstance() + "|" + table.getSchemaSwitchLsn();
+        return "%s|%s|%s".formatted(table.getSourceTableId(), table.getCaptureInstance(), table.getSchemaSwitchLsn());
     }
 
     private Db2ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, Db2ChangeTable[] currentChangeTables) throws Exception {
