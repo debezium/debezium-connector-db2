@@ -328,7 +328,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     }
 
     private void migrateRequiredTables(Db2Partition partition, Db2OffsetContext offsetContext,
-                                  Queue<Db2ChangeTable> schemaChangeCheckpoints, Set<String> migratedSchemaChanges, Lsn currentLsn)
+                                       Queue<Db2ChangeTable> schemaChangeCheckpoints, Set<String> migratedSchemaChanges, Lsn currentLsn)
             throws InterruptedException, SQLException {
         while (!schemaChangeCheckpoints.isEmpty() && schemaChangeCheckpoints.peek().getSchemaSwitchLsn().compareTo(currentLsn) <= 0) {
             final Db2ChangeTable migratedTable = migrateTable(partition, offsetContext, schemaChangeCheckpoints);
