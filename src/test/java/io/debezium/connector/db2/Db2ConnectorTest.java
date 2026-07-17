@@ -31,7 +31,7 @@ public class Db2ConnectorTest {
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
             if (expected.equals(Db2ConnectorConfig.SCHEMA_HISTORY)) {
-                assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
+                assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();
