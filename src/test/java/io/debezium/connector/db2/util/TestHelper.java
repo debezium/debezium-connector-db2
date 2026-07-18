@@ -186,7 +186,32 @@ public class TestHelper {
      *             if anything unexpected fails
      */
     public static void disableDbCdc(Db2Connection connection) throws SQLException {
+        LOGGER.info("Disabling database CDC");
         connection.execute(DISABLE_DB_CDC);
+        try (Statement stmt = connection.connection().createStatement()) {
+            AtomicInteger count = new AtomicInteger();
+            try {
+                Awaitility.await()
+                        .atMost(5, TimeUnit.MINUTES)
+                        .pollInterval(Duration.ofSeconds(1))
+                        .until(() -> {
+                            count.incrementAndGet();
+                            try (ResultSet rs = stmt.executeQuery(STATUS_DB_CDC)) {
+                                if (rs.next()) {
+                                    Clob clob = rs.getClob(1);
+                                    String status = clob.getSubString(1, (int) clob.length());
+                                    LOGGER.debug("Checking DB CDC Status: '{}'", status);
+                                    return status.contains("is not running");
+                                }
+                                return false;
+                            }
+                        });
+            }
+            catch (ConditionTimeoutException e) {
+                throw new SQLException("ASNCAP server did not stop in 5 minutes over %d attempts.".formatted(count.get()), e);
+            }
+        }
+        LOGGER.info("Database CDC disabled.");
     }
 
     /**
