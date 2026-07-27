@@ -6,7 +6,9 @@
 
 package io.debezium.connector.db2;
 
+import java.sql.Blob;
 import java.sql.CallableStatement;
+import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -544,6 +546,31 @@ public class Db2Connection extends JdbcConnection {
         // "The null value is higher than all other values"
         // https://www.ibm.com/docs/en/db2/11.5?topic=subselect-order-by-clause
         return Optional.of(true);
+    }
+
+    /**
+     * The JCC driver returns CLOB/DBCLOB and BLOB columns as lazy {@link Clob}/{@link Blob}
+     * handles that are only valid while the current row is open. If those handles reach the value
+     * converters they are read too late ("Lob is closed", ERRORCODE=-4470) — or, worse, silently
+     * emitted as the handle's {@code toString()}. Materialize the LOB content here, while the
+     * {@link ResultSet} row is still open, mirroring how the Oracle connector handles LOBs.
+     */
+    @Override
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        switch (column.jdbcType()) {
+            case Types.CLOB:
+            case Types.NCLOB: {
+                final Clob clob = rs.getClob(columnIndex);
+                // java.sql.Clob is 1-based; a length of 0 is valid and yields an empty string.
+                return clob == null ? null : clob.getSubString(1, (int) clob.length());
+            }
+            case Types.BLOB: {
+                final Blob blob = rs.getBlob(columnIndex);
+                return blob == null ? null : blob.getBytes(1, (int) blob.length());
+            }
+            default:
+                return super.getColumnValue(rs, columnIndex, column, table);
+        }
     }
 
     @Override
