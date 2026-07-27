@@ -534,6 +534,29 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             return resultSet.getInt(COL_OPERATION);
         }
 
+        /**
+         * The JCC driver returns CLOB/DBCLOB and BLOB change-table columns as lazy
+         * {@link java.sql.Clob}/{@link java.sql.Blob} handles that are only valid while the current
+         * row is open. Reading them later fails with "Lob is closed" (ERRORCODE=-4470) or yields the
+         * handle's {@code toString()}. Materialize the LOB content here, while the row is still open.
+         */
+        @Override
+        protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
+            switch (resultSet.getMetaData().getColumnType(columnIndex)) {
+                case java.sql.Types.CLOB:
+                case java.sql.Types.NCLOB: {
+                    final java.sql.Clob clob = resultSet.getClob(columnIndex);
+                    return clob == null ? null : clob.getSubString(1, (int) clob.length());
+                }
+                case java.sql.Types.BLOB: {
+                    final java.sql.Blob blob = resultSet.getBlob(columnIndex);
+                    return blob == null ? null : blob.getBytes(1, (int) blob.length());
+                }
+                default:
+                    return super.getColumnData(resultSet, columnIndex);
+            }
+        }
+
         @Override
         protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
             return isCompleted() ? TxLogPosition.NULL
