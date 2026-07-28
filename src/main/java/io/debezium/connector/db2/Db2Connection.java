@@ -70,7 +70,7 @@ public class Db2Connection extends JdbcConnection {
 
     private static final String LOCK_TABLE = "SELECT * FROM # WITH CS"; // DB2
 
-    private static final String LSN_TO_TIMESTAMP = "SELECT CURRENT TIMEstamp FROM sysibm.sysdummy1  WHERE ? > X'00000000000000000000000000000000'";
+    private static final String LSN_TO_TIMESTAMP_QUERY = "SELECT IBMSNAP_LOGMARKER FROM %s.IBMSNAP_UOW WHERE IBMSNAP_COMMITSEQ = ?";
 
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT "
             + "CAST((t.TBSPACEID * 65536 +  t.TABLEID )AS INTEGER ) as objectid, "
@@ -96,6 +96,7 @@ public class Db2Connection extends JdbcConnection {
     private final String realDatabaseName;
 
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
+    private final String lsnToTimestampQuery;
 
     private final Db2ConnectorConfig connectorConfig;
     private final Db2PlatformAdapter platform;
@@ -112,6 +113,7 @@ public class Db2Connection extends JdbcConnection {
 
         connectorConfig = config;
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
+        lsnToTimestampQuery = String.format(LSN_TO_TIMESTAMP_QUERY, connectorConfig.getCdcControlSchema());
         realDatabaseName = retrieveRealDatabaseName();
         platform = connectorConfig.getDb2Platform().createAdapter(connectorConfig);
     }
@@ -250,8 +252,6 @@ public class Db2Connection extends JdbcConnection {
      * @throws SQLException
      */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
-        final String query = LSN_TO_TIMESTAMP;
-
         if (lsn.getBinary() == null) {
             return null;
         }
@@ -261,17 +261,31 @@ public class Db2Connection extends JdbcConnection {
             return cachedInstant;
         }
 
-        return prepareQueryAndMap(query, statement -> {
-            statement.setBytes(1, lsn.getBinary());
-        }, singleResultMapper(rs -> {
-            final Timestamp ts = rs.getTimestamp(1);
-            final Instant ret = (ts == null) ? null : ts.toInstant();
-            LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
-            if (ret != null) {
-                lsnToInstantCache.put(lsn, ret);
-            }
-            return ret;
-        }, "LSN to timestamp query must return exactly one value"));
+        Instant ret = null;
+        try {
+            ret = prepareQueryAndMap(lsnToTimestampQuery, statement -> {
+                statement.setBytes(1, lsn.getBinary());
+            }, rs -> {
+                if (rs.next()) {
+                    final Timestamp ts = rs.getTimestamp(1);
+                    return (ts == null) ? null : ts.toInstant();
+                }
+                return null;
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.debug("Failed to retrieve timestamp for LSN {} from IBMSNAP_UOW, falling back to database current timestamp", lsn, e);
+        }
+
+        if (ret == null) {
+            ret = getCurrentTimestamp().orElse(null);
+        }
+
+        LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
+        if (ret != null) {
+            lsnToInstantCache.put(lsn, ret);
+        }
+        return ret;
     }
 
     @Override
