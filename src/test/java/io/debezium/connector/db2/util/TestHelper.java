@@ -788,4 +788,28 @@ public class TestHelper {
         getPruneSetRecordForPruneSet(targetServer, applyQual, setName);
 
     }
+
+    public static void insertUowRow(Db2Connection connection, Lsn lsn, Instant timestamp) throws SQLException {
+        final String query = "INSERT INTO " + CONTROL_TABLE_SCHEMA_NAME + ".IBMSNAP_UOW " +
+                "(IBMSNAP_UOWID, IBMSNAP_COMMITSEQ, IBMSNAP_LOGMARKER, IBMSNAP_AUTHTKN, IBMSNAP_AUTHID) " +
+                "VALUES (?, ?, ?, ?, ?)";
+        byte[] uowId = new byte[10];
+        System.arraycopy(lsn.getBinary(), 0, uowId, 0, 10);
+        connection.prepareUpdate(query, ps -> {
+            ps.setBytes(1, uowId); // unique UOWID derived from LSN
+            ps.setBytes(2, lsn.getBinary()); // COMMITSEQ
+            ps.setTimestamp(3, Timestamp.from(timestamp)); // LOGMARKER
+            ps.setString(4, "dummy_authtkn"); // AUTHTKN
+            ps.setString(5, "dummy_authid"); // AUTHID
+        });
+        connection.commit();
+    }
+
+    public static void deleteUowRow(Db2Connection connection, Lsn lsn) throws SQLException {
+        final String query = "DELETE FROM " + CONTROL_TABLE_SCHEMA_NAME + ".IBMSNAP_UOW WHERE IBMSNAP_COMMITSEQ = ?";
+        connection.prepareUpdate(query, ps -> {
+            ps.setBytes(1, lsn.getBinary());
+        });
+        connection.commit();
+    }
 }
