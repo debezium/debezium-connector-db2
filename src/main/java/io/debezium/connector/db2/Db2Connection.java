@@ -568,8 +568,9 @@ public class Db2Connection extends JdbcConnection {
                 final Blob blob = rs.getBlob(columnIndex);
                 return blob == null ? null : blob.getBytes(1, (int) blob.length());
             }
-            default:
+            default: {
                 return super.getColumnValue(rs, columnIndex, column, table);
+            }
         }
     }
 
