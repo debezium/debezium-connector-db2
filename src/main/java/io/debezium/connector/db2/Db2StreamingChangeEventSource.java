@@ -552,8 +552,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                     final java.sql.Blob blob = resultSet.getBlob(columnIndex);
                     return blob == null ? null : blob.getBytes(1, (int) blob.length());
                 }
-                default:
+                default: {
                     return super.getColumnData(resultSet, columnIndex);
+                }
             }
         }
 
