@@ -7,8 +7,8 @@ package io.debezium.connector.db2;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.Base64;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -16,7 +16,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
@@ -36,7 +35,6 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
     private static final String CLOB_VALUE = "the quick brown fox";
     private static final String DBCLOB_VALUE = "unicode text ção";
     private static final byte[] BLOB_VALUE = { (byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF };
-    private static final String BLOB_BASE64 = Base64.getEncoder().encodeToString(BLOB_VALUE);
 
     @BeforeEach
     public void before() throws SQLException {
@@ -77,7 +75,6 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.dt_lob")
-                .with(Db2ConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64)
                 .build();
 
         start(Db2Connector.class, config);
@@ -86,10 +83,7 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
         // --- snapshot (op=r) ---
         SourceRecords records = consumeRecordsByTopic(1);
         SourceRecord snapshot = records.recordsForTopic("testdb.DB2INST1.DT_LOB").get(0);
-        Struct after = ((Struct) snapshot.value()).getStruct("after");
-        assertThat(after.get("C_CLOB")).isEqualTo(CLOB_VALUE);
-        assertThat(after.get("C_DBCLOB")).isEqualTo(DBCLOB_VALUE);
-        assertThat(after.get("C_BLOB")).isEqualTo(BLOB_BASE64);
+        assertLobValues(((Struct) snapshot.value()).getStruct("after"));
 
         // --- streaming (op=c) ---
         TestHelper.enableDbCdc(connection);
@@ -106,11 +100,15 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
 
         records = consumeRecordsByTopic(1);
         SourceRecord streamed = records.recordsForTopic("testdb.DB2INST1.DT_LOB").get(0);
-        Struct streamedAfter = ((Struct) streamed.value()).getStruct("after");
-        assertThat(streamedAfter.get("C_CLOB")).isEqualTo(CLOB_VALUE);
-        assertThat(streamedAfter.get("C_DBCLOB")).isEqualTo(DBCLOB_VALUE);
-        assertThat(streamedAfter.get("C_BLOB")).isEqualTo(BLOB_BASE64);
+        assertLobValues(((Struct) streamed.value()).getStruct("after"));
 
         stopConnector();
+    }
+
+    private void assertLobValues(Struct after) {
+        assertThat(after.get("C_CLOB")).isEqualTo(CLOB_VALUE);
+        assertThat(after.get("C_DBCLOB")).isEqualTo(DBCLOB_VALUE);
+        // Binary values are represented as a ByteBuffer by default (binary.handling.mode=bytes).
+        assertThat(after.get("C_BLOB")).isEqualTo(ByteBuffer.wrap(BLOB_VALUE));
     }
 }
