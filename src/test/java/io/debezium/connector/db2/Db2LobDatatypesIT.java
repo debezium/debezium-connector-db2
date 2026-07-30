@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.db2;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
@@ -23,15 +25,19 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
- * Integration test verifying that Db2 LOB columns (CLOB, DBCLOB, BLOB) are captured with their
- * actual content in the initial snapshot. This guards against the regression where the JCC
- * driver's lazy {@link java.sql.Clob}/{@link java.sql.Blob} handles were read too late and
- * surfaced as {@code null} or the handle's {@code toString()}.
+ * Integration test verifying that Db2 LOB columns (CLOB, DBCLOB, BLOB) are handled correctly. This
+ * guards against the regression where the JCC driver's lazy {@link java.sql.Clob}/{@link java.sql.Blob}
+ * handles were read too late and surfaced as {@code null} or the handle's {@code toString()}.
  * <p>
- * Streaming LOB capture is intentionally not asserted here: the ASN capture change-data table does
- * not carry the LOB content (the LOB column is null there), so the value cannot be materialized
- * during streaming regardless of this fix. This mirrors other engines where the transaction/redo
- * log omits LOB payloads by default.
+ * The two capture phases behave differently by design:
+ * <ul>
+ * <li><b>Snapshot</b> reads the base table directly, so the actual LOB content is captured.</li>
+ * <li><b>Streaming</b> reads the ASN change-data table, which does not carry the LOB content (Db2 SQL
+ * Replication's Capture program only records that the LOB changed and leaves the value to be fetched
+ * from the source). Such columns are therefore emitted with the unavailable-value placeholder, mirroring
+ * how other engines (e.g. Oracle without {@code lob.enabled}) behave; a user can recover the value with
+ * the {@code ReselectColumnsPostProcessor}.</li>
+ * </ul>
  */
 public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
 
@@ -74,7 +80,7 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void lobTypesCapturedInSnapshot() throws Exception {
+    public void lobTypesCapturedInSnapshotAndPlaceholderWhileStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.dt_lob")
@@ -85,13 +91,32 @@ public class Db2LobDatatypesIT extends AbstractAsyncEngineConnectorTest {
 
         // Snapshot (op=r): the LOB content is read from the base table with the row open, which is
         // exactly the path the fix materializes.
-        SourceRecords records = consumeRecordsByTopic(1);
-        SourceRecord snapshot = records.recordsForTopic("testdb.DB2INST1.DT_LOB").get(0);
-        Struct after = ((Struct) snapshot.value()).getStruct("after");
-        assertThat(after.get("C_CLOB")).isEqualTo(CLOB_VALUE);
-        assertThat(after.get("C_DBCLOB")).isEqualTo(DBCLOB_VALUE);
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        SourceRecord snapshot = snapshotRecords.recordsForTopic("testdb.DB2INST1.DT_LOB").get(0);
+        Struct snapshotAfter = ((Struct) snapshot.value()).getStruct("after");
+        assertThat(snapshotAfter.get("C_CLOB")).isEqualTo(CLOB_VALUE);
+        assertThat(snapshotAfter.get("C_DBCLOB")).isEqualTo(DBCLOB_VALUE);
         // Binary values are represented as a ByteBuffer by default (binary.handling.mode=bytes).
-        assertThat(after.get("C_BLOB")).isEqualTo(ByteBuffer.wrap(BLOB_VALUE));
+        assertThat(snapshotAfter.get("C_BLOB")).isEqualTo(ByteBuffer.wrap(BLOB_VALUE));
+
+        // Streaming (op=c): the ASN change-data table does not carry the LOB content, so the columns
+        // are emitted with the unavailable-value placeholder instead of null.
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        connection.execute("INSERT INTO dt_lob VALUES(2, '" + CLOB_VALUE + "', '" + DBCLOB_VALUE
+                + "', BLOB(X'" + BLOB_HEX + "'))");
+
+        TestHelper.refreshAndWait(connection);
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        SourceRecord streamed = streamingRecords.recordsForTopic("testdb.DB2INST1.DT_LOB").get(0);
+        Struct streamedAfter = ((Struct) streamed.value()).getStruct("after");
+        assertThat(streamedAfter.get("C_CLOB")).isEqualTo(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
+        assertThat(streamedAfter.get("C_DBCLOB")).isEqualTo(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
+        assertThat(streamedAfter.get("C_BLOB"))
+                .isEqualTo(ByteBuffer.wrap(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER.getBytes(StandardCharsets.UTF_8)));
 
         stopConnector();
     }
