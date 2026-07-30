@@ -178,8 +178,9 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                         final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
                         final Db2ChangeTable[] tables = tablesSlot.get();
 
+                        final byte[] unavailableValuePlaceholder = connectorConfig.getUnavailableValuePlaceholder();
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i]);
+                            changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i], unavailableValuePlaceholder);
                             changeTables[i].next();
                         }
 
@@ -518,10 +519,14 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
      */
     private static class ChangeTablePointer extends ChangeTableResultSet<Db2ChangeTable, TxLogPosition> {
         private final ResultSet resultSet;
+        private final String unavailableValuePlaceholderString;
+        private final byte[] unavailableValuePlaceholderBytes;
 
-        ChangeTablePointer(Db2ChangeTable changeTable, ResultSet resultSet) {
+        ChangeTablePointer(Db2ChangeTable changeTable, ResultSet resultSet, byte[] unavailableValuePlaceholder) {
             super(changeTable, COL_DATA, 0);
             this.resultSet = resultSet;
+            this.unavailableValuePlaceholderBytes = unavailableValuePlaceholder;
+            this.unavailableValuePlaceholderString = new String(unavailableValuePlaceholder);
         }
 
         @Override
@@ -538,7 +543,14 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
          * The JCC driver returns CLOB/DBCLOB and BLOB change-table columns as lazy
          * {@link java.sql.Clob}/{@link java.sql.Blob} handles that are only valid while the current
          * row is open. Reading them later fails with "Lob is closed" (ERRORCODE=-4470) or yields the
-         * handle's {@code toString()}. Materialize the LOB content here, while the row is still open.
+         * handle's {@code toString()}, so the content is materialized here, while the row is still open.
+         * <p>
+         * Db2 SQL Replication does not, however, copy the LOB content into the change-data table: the
+         * Capture program only records that the LOB changed and the Apply program later fetches the value
+         * from the source table. The LOB therefore reads back as {@code null} while streaming. To keep the
+         * connector's behaviour uniform with other engines (e.g. Oracle when {@code lob.enabled} is not
+         * set), such columns are emitted with the unavailable-value placeholder, which the
+         * {@code ReselectColumnsPostProcessor} can use to re-select the current value from the source.
          */
         @Override
         protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
@@ -546,11 +558,11 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
                 case java.sql.Types.CLOB:
                 case java.sql.Types.NCLOB: {
                     final java.sql.Clob clob = resultSet.getClob(columnIndex);
-                    return clob == null ? null : clob.getSubString(1, (int) clob.length());
+                    return clob == null ? unavailableValuePlaceholderString : clob.getSubString(1, (int) clob.length());
                 }
                 case java.sql.Types.BLOB: {
                     final java.sql.Blob blob = resultSet.getBlob(columnIndex);
-                    return blob == null ? null : blob.getBytes(1, (int) blob.length());
+                    return blob == null ? unavailableValuePlaceholderBytes : blob.getBytes(1, (int) blob.length());
                 }
                 default: {
                     return super.getColumnData(resultSet, columnIndex);
