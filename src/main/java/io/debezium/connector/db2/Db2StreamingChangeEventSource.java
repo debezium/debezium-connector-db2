@@ -5,6 +5,12 @@
  */
 package io.debezium.connector.db2;
 
+import static java.sql.Types.BLOB;
+import static java.sql.Types.CLOB;
+import static java.sql.Types.NCLOB;
+
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -541,7 +547,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
 
         /**
          * The JCC driver returns CLOB/DBCLOB and BLOB change-table columns as lazy
-         * {@link java.sql.Clob}/{@link java.sql.Blob} handles that are only valid while the current
+         * {@link Clob}/{@link Blob} handles that are only valid while the current
          * row is open. Reading them later fails with "Lob is closed" (ERRORCODE=-4470) or yields the
          * handle's {@code toString()}, so the content is materialized here, while the row is still open.
          * <p>
@@ -555,13 +561,13 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         @Override
         protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
             switch (resultSet.getMetaData().getColumnType(columnIndex)) {
-                case java.sql.Types.CLOB:
-                case java.sql.Types.NCLOB: {
-                    final java.sql.Clob clob = resultSet.getClob(columnIndex);
+                case CLOB:
+                case NCLOB: {
+                    final Clob clob = resultSet.getClob(columnIndex);
                     return clob == null ? unavailableValuePlaceholderString : clob.getSubString(1, (int) clob.length());
                 }
-                case java.sql.Types.BLOB: {
-                    final java.sql.Blob blob = resultSet.getBlob(columnIndex);
+                case BLOB: {
+                    final Blob blob = resultSet.getBlob(columnIndex);
                     return blob == null ? unavailableValuePlaceholderBytes : blob.getBytes(1, (int) blob.length());
                 }
                 default: {
