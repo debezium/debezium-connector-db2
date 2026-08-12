@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.Table;
@@ -97,6 +100,8 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     private Instant lastPruneUpdateInstant = Instant.EPOCH;
 
     private final SnapshotterService snapshotterService;
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
+    private OffsetActivityMonitor<Db2Partition, Db2OffsetContext> offsetActivityMonitor;
 
     public Db2StreamingChangeEventSource(Db2ConnectorConfig connectorConfig, Db2Connection dataConnection,
                                          Db2Connection metadataConnection,
@@ -111,6 +116,7 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         this.schema = schema;
         this.pollInterval = connectorConfig.getPollInterval();
         this.snapshotterService = snapshotterService;
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     public void init(Db2OffsetContext offsetContext) {
@@ -141,6 +147,8 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
+                offsetActivityMonitorService.pulse(partition, offsetContext);
+
                 Lsn currentMaxLsn = null;
                 if (!connectorConfig.isStreamingQueryTimespanEnabled()) {
                     currentMaxLsn = dataConnection.getMaxLsn();
@@ -397,6 +405,14 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     @Override
     public Db2OffsetContext getOffsetContext() {
         return effectiveOffsetContext;
+    }
+
+    @Override
+    public Optional<OffsetActivityMonitor<Db2Partition, Db2OffsetContext>> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new Db2OffsetActivityMonitor(connectorConfig.getOffsetActivityMonitorInterval());
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     private Db2ChangeTable migrateTable(Db2Partition partition, Db2OffsetContext offsetContext,
