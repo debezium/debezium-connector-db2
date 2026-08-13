@@ -8,25 +8,21 @@ package io.debezium.connector.db2;
 import java.time.Duration;
 import java.util.Objects;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.StaleOffsetsResult;
 
 /**
  * An {@link OffsetActivityMonitor} that tracks state changes to the connector's offsets.
  * <p>
  * The offset change position, the combination of the commit and change log sequence numbers,
  * is compared against the value captured when the monitor was last consulted, and when the
- * position has not moved, a warning is logged. The combination is used rather than the commit
- * log sequence number alone so that progress within a single large transaction is not
+ * position has not moved, a stale result is reported. The combination is used rather than the
+ * commit log sequence number alone so that progress within a single large transaction is not
  * reported as stale.
  *
  * @author Chris Cranford
  */
 public class Db2OffsetActivityMonitor implements OffsetActivityMonitor<Db2Partition, Db2OffsetContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Db2OffsetActivityMonitor.class);
 
     private final Duration checkInterval;
 
@@ -37,20 +33,24 @@ public class Db2OffsetActivityMonitor implements OffsetActivityMonitor<Db2Partit
     }
 
     @Override
-    public void checkForStaleOffsets(Db2Partition partition, Db2OffsetContext offsetContext) {
+    public StaleOffsetsResult checkForStaleOffsets(Db2Partition partition, Db2OffsetContext offsetContext) {
         final TxLogPosition position = offsetContext.getChangePosition();
 
         // Check for stale state
+        StaleOffsetsResult result = StaleOffsetsResult.fresh();
         if (Objects.equals(previousPosition, position)) {
-            LOGGER.warn("Offset position {} has not changed in at least {} milliseconds. " +
-                    "This may indicate the database is idle, there are no changes for the captured tables, " +
-                    "there are long running transaction(s) delaying the delivery of change events, " +
-                    "or that the capture agent is not writing changes to the change tables.",
-                    position, checkInterval.toMillis());
+            result = StaleOffsetsResult.stale(
+                    ("Offset position %s has not changed in at least %d milliseconds. " +
+                            "This may indicate the database is idle, there are no changes for the captured tables, " +
+                            "there are long running transaction(s) delaying the delivery of change events, " +
+                            "or that the capture agent is not writing changes to the change tables.")
+                            .formatted(position, checkInterval.toMillis()));
         }
 
         // Update tracked stats
         previousPosition = position;
+
+        return result;
     }
 
 }
