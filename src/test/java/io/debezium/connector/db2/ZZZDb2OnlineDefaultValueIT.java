@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.db2;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -29,6 +30,7 @@ public class ZZZDb2OnlineDefaultValueIT extends AbstractDb2DefaultValueIT {
     @Test
     @FixFor("DBZ-4990")
     @Flaky("DBZ-6048")
+    @Disabled("DB2 CDC does not resolve CURRENT DATE/TIMESTAMP special register defaults in log entries")
     public void shouldHandleDateTimeDefaultTypes() throws Exception {
         super.shouldHandleDateTimeDefaultTypes();
     }
