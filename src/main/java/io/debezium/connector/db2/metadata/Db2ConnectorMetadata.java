@@ -19,7 +19,11 @@ public class Db2ConnectorMetadata implements ComponentMetadata {
 
     @Override
     public ComponentDescriptor getComponentDescriptor() {
-        return new ComponentDescriptor(Db2Connector.class.getName(), Module.version());
+        return new ComponentDescriptor(
+                Db2Connector.class.getName(),
+                null,
+                "Captures changes from IBM Db2 databases.",
+                Module.version());
     }
 
     @Override
