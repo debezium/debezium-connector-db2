@@ -1,4 +1,18 @@
--- 1021  db2 LEVEL Version 10.2.0  --> 11.5.0  1150
+-- SQL Replication Capture control tables, ARCH_LEVEL 1021 (db2 LEVEL Version 10.2.0).
+--
+-- The arch level is unchanged on Db2 12.1, but the Capture program of recent fix packs
+-- needs extra columns and the IBMQREP_CAPCMD* tables. These are already merged into the
+-- CREATE TABLE statements below; they come from the migration scripts shipped in the
+-- Db2 image:
+--   /opt/ibm/db2/V12.1/samples/repl/mig1140/sql/asncapluwv1140fp.sql
+--     -> IBMSNAP_CAPPARMS and IBMSNAP_CAPMON columns, IBMQREP_CAPCMD / IBMQREP_CAPCMDOUT
+--   /opt/ibm/db2/V12.1/samples/repl/mig1140/q/asnqcapluwv1140fp.sql
+--     -> IBMQREP_COLVERSION.COORDINATETYPE
+--
+-- Without them Capture fails with ASN0552E / SQLCODE -206: on startup when
+-- IBMSNAP_CAPPARMS.STALE is missing, and as soon as a registration becomes active when
+-- IBMQREP_COLVERSION.COORDINATETYPE is missing. Both show up as "ASNCDC does not start";
+-- the diagnostics are in the ASNCDC.IBMSNAP_CAPTRACE table, not in the container log.
 
 CREATE TABLE ASNCDC.IBMQREP_COLVERSION(
 LSN                             VARCHAR( 16) FOR BIT DATA NOT NULL,
@@ -12,7 +26,8 @@ NULLS                           CHAR(  1) NOT NULL,
 DEFAULT                         VARCHAR(1536),
 CODEPAGE                        INTEGER,
 SCALE                           INTEGER,
-VERSION_TIME                    TIMESTAMP NOT NULL WITH DEFAULT )
+VERSION_TIME                    TIMESTAMP NOT NULL WITH DEFAULT ,
+COORDINATETYPE                  VARCHAR(  8) WITH DEFAULT NULL)
 	ORGANIZE BY ROW;
 
 
@@ -101,7 +116,12 @@ LOGRDR_SLEEPTIME                INT,
 NUM_LOGREAD_F_CALLS             INT,
 TRANS_QUEUED                    INT,
 NUM_WARNTXS                     INT,
-NUM_WARNLOGAPI                  INT)
+NUM_WARNLOGAPI                  INT,
+LOGRDR_SUSPENDTIME              INTEGER NOT NULL WITH DEFAULT 0,
+ROWS_SPILLED                    BIGINT NOT NULL WITH DEFAULT 0,
+SPILL_COUNT                     INTEGER NOT NULL WITH DEFAULT 0,
+TOTAL_TRANS_QUEUED              INTEGER NOT NULL WITH DEFAULT 0,
+TRANS_EMPTY                     INTEGER NOT NULL WITH DEFAULT 0)
 	ORGANIZE BY ROW;
 
 
@@ -134,7 +154,19 @@ CAPTURE_PATH                    VARCHAR(1040),
 STARTMODE                       VARCHAR( 10),
 LOGRDBUFSZ                      INT NOT NULL WITH DEFAULT 256,
 ARCH_LEVEL                      CHAR( 4) NOT NULL WITH DEFAULT '1021',
-COMPATIBILITY                   CHAR( 4) NOT NULL WITH DEFAULT '1021')
+COMPATIBILITY                   CHAR( 4) NOT NULL WITH DEFAULT '1021',
+CAPCMD_INTERVAL                 INTEGER NOT NULL WITH DEFAULT 3000,
+CAPSTART_REORGCHECK             CHAR(  1) WITH DEFAULT NULL,
+DROPTAB_ACTION                  CHAR(  1) NOT NULL WITH DEFAULT 'W',
+IFI_CONVERT_LOG_DATA            CHAR(  1) WITH DEFAULT NULL,
+IFI_FILTER_PARTS                CHAR(  1) WITH DEFAULT NULL,
+INSERT_UOW                      CHAR(  1) NOT NULL WITH DEFAULT 'Y',
+LOG_COMMIT_INTERVAL             INTEGER NOT NULL WITH DEFAULT 30,
+STALE                           INTEGER NOT NULL WITH DEFAULT 3600,
+USE_CAPCMD_TABLE                CHAR(  1) NOT NULL WITH DEFAULT 'Y',
+WARNLOGAPI                      INTEGER NOT NULL WITH DEFAULT 0,
+WARNTXSZ                        INTEGER NOT NULL WITH DEFAULT 0,
+TRANS_COMMIT_MODE               INT)
 	ORGANIZE BY ROW;
 
 
@@ -540,5 +572,38 @@ CREATE TABLE ASNCDC.IBMSNAP_CAPENQ (
 		LOCK_NAME CHAR(9 OCTETS)
 	)
 	ORGANIZE BY ROW
-	DATA CAPTURE NONE 
+	DATA CAPTURE NONE
 	COMPRESS NO;
+
+
+CREATE TABLE ASNCDC.IBMQREP_CAPCMD(
+CMD_ID                          BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY(START WITH 1 INCREMENT BY 1 NO CACHE ORDER),
+CMD_INPUT_TIME                  TIMESTAMP NOT NULL WITH DEFAULT CURRENT TIMESTAMP,
+CMD_ORIGINATOR                  VARCHAR(128) NOT NULL WITH DEFAULT USER,
+CMD_TEXT                        VARCHAR(1024) NOT NULL,
+CMD_STATE                       CHARACTER(  1) NOT NULL WITH DEFAULT 'P',
+CMD_RESULT_MSG                  VARCHAR(1024) WITH DEFAULT NULL,
+CMD_STATE_TIME                  TIMESTAMP NOT NULL WITH DEFAULT CURRENT TIMESTAMP,
+CMD_RESULT_RC                   INTEGER WITH DEFAULT NULL)
+	ORGANIZE BY ROW;
+
+
+ALTER TABLE ASNCDC.IBMQREP_CAPCMD VOLATILE CARDINALITY;
+
+
+CREATE UNIQUE INDEX ASNCDC.IX1CAPCMD
+ON ASNCDC.IBMQREP_CAPCMD(
+CMD_ID                          ASC);
+
+
+CREATE TABLE ASNCDC.IBMQREP_CAPCMDOUT(
+CMD_ID                          BIGINT NOT NULL,
+CMD_SEQUENCE                    SMALLINT NOT NULL,
+CMD_OUTPUT                      VARCHAR(4000) NOT NULL)
+	ORGANIZE BY ROW;
+
+
+CREATE UNIQUE INDEX ASNCDC.IX1CAPCMDOUT
+ON ASNCDC.IBMQREP_CAPCMDOUT(
+CMD_ID                          ASC,
+CMD_SEQUENCE                    ASC);
