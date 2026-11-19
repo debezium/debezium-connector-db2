@@ -1,4 +1,4 @@
-FROM icr.io/db2_community/db2:11.5.9.0
+FROM icr.io/db2_community/db2:12.1.5.0
 
 MAINTAINER  Peter Urbanetz
 

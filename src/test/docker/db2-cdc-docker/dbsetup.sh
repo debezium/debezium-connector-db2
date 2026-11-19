@@ -2,10 +2,10 @@
 
 echo "Compile ASN tool ..."
 cd /asncdctools/src
-/opt/ibm/db2/V11.5/samples/c/bldrtn asncdc
+/opt/ibm/db2/V12.1/samples/c/bldrtn asncdc
 
 DBNAME=$1
-DB2DIR=/opt/ibm/db2/V11.5
+DB2DIR=/opt/ibm/db2/V12.1
 rc=1
 echo "Waiting for DB2 start ( $DBNAME ) ."
 while [ "$rc" -ne 0 ]
